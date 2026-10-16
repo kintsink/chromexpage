@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Chrome XP 复刻版 - Linux 一键启动。在终端运行：bash "启动 Chrome XP.sh"；按 Ctrl+C 停止服务。
-# Chrome XP replica - Linux one-click launcher. Run in a terminal: bash "启动 Chrome XP.sh";
+# Chrome XP 复刻版 - Linux 一键启动。在终端运行：bash "start-linux.sh"；按 Ctrl+C 停止服务。
+# Chrome XP replica - Linux one-click launcher. Run in a terminal: bash "start-linux.sh";
 # press Ctrl+C to stop the server.
 #
 # 可选 / Optional:  PORT=9000 起始端口 / starting port      CX_LOG=1 打印请求日志 / log every request

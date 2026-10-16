@@ -2,17 +2,14 @@
 
 ## v2.4.1 — 2026-10-17
 
-### Changed / 变更
+### Changed
 
 - **English file names.** The launchers are now `start-macos.command`, `start-windows.bat` and `start-linux.sh`;
-  the guides are `LAUNCHERS.md` and `LANGUAGES.md`. The Chinese guides moved to `docs/`.
-  **文件名改为英文**：启动脚本现在是 `start-macos.command` / `start-windows.bat` / `start-linux.sh`，
-  文档是 `LAUNCHERS.md` / `LANGUAGES.md`，中文文档移到 `docs/`。
-- **English README by default**, with a Simplified Chinese version in `docs/README.zh-CN.md`. The Chinese and English
-  text no longer sit in the same paragraphs.
-  **README 默认英文**，简体中文版在 `docs/README.zh-CN.md`，中英文不再混排在同一段里。
-- The CHANGELOG is now English only.
-  更新日志改为纯英文。
+  the guides are `LAUNCHERS.md` and `LANGUAGES.md`. The Chinese guides moved under `docs/` (their own file names
+  keep the `.zh-CN.md` suffix so the language is obvious at a glance).
+- **The README is English by default**, with a Simplified Chinese translation in `docs/README.zh-CN.md` and a
+  language switcher on the first line. Chinese and English are no longer interleaved in the same paragraphs.
+- The CHANGELOG is English only.
 
 ## v2.4.0 — 2026-10-17
 

@@ -4,6 +4,8 @@
 
 在浏览器里复刻 Windows XP 上的 Chrome 1.0 界面，而且**能真的上网**：XP 桌面、任务栏、多窗口、标签页、地址栏，点进去就是真网页。
 
+![Chrome 1.0 on XP 界面：XP 任务栏、标签页、新标签页](screenshots/newtab.jpg)
+
 需要 Node.js 20 或更高，没有其他依赖——不用 npm install，装的东西为零。
 
 > 仅供学习和怀旧，与 Google 没有任何关联。
@@ -78,6 +80,16 @@ macOS 和 Linux 启动脚本还支持 `CX_LOG=1` 打开日志。
   界面只接受来自 `*.chrome.localhost` 的消息。
 - 内联脚本里的 `top.location` / `parent.location` 会改写成 `window.location`，让"跳出框架"式的跳转页留在标签页里。
 
+## 截图
+
+| 浏览真实网页 | 证书查看器 |
+|---|---|
+| ![标签页里打开维基百科，上方是 XP 风格的工具栏与标签栏](screenshots/browsing.jpg) | ![从锁图标打开的 developer.mozilla.org 的 TLS 证书详情](screenshots/certificate.jpg) |
+
+| 多窗口与关于对话框 |
+|---|
+| ![XP 桌面上两个层叠的浏览器窗口，前面是「关于 Google Chrome」对话框，版本 1.0.154.36](screenshots/about.jpg) |
+
 ## 安全
 
 - 服务只监听 `127.0.0.1`，界面只响应 `localhost` / `127.0.0.1` / `chrome.localhost`（防 DNS 重绑定）。
@@ -122,6 +134,7 @@ LANGUAGES.md           多语言说明
 CHANGELOG.md           更新日志
 LICENSE                MIT 许可证
 docs/                  简体中文文档（本文件在这里）
+docs/screenshots/      本 README 用到的截图
 ```
 
 ## 测试情况

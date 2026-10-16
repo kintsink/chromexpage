@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Screenshots in the README (New Tab, browsing, certificate viewer, multiple windows), stored in
+  `docs/screenshots/`.
+
 ## v2.4.1 — 2026-10-17
 
 ### Changed

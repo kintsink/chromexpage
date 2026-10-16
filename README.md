@@ -5,6 +5,8 @@
 A replica of Chrome 1.0 on Windows XP that runs in your browser and **actually browses**: XP desktop, taskbar,
 multiple windows, tabs and an address bar, pointing at the real web.
 
+![The Chrome 1.0 on XP interface: XP taskbar, tabs, and a New Tab page](docs/screenshots/newtab.jpg)
+
 Requires Node.js 20 or newer. Nothing else — no npm install, no dependencies.
 
 > For learning and nostalgia only. Not affiliated with Google.
@@ -80,6 +82,16 @@ browser
 - `top.location` / `parent.location` in inline scripts become `window.location`, so frame-busting redirect pages stay
   inside the tab.
 
+## Screenshots
+
+| Browsing the real web | Certificate viewer |
+|---|---|
+| ![Wikipedia open in a tab, with the XP-style toolbar and tab strip above it](docs/screenshots/browsing.jpg) | ![TLS certificate details for developer.mozilla.org, opened from the lock icon](docs/screenshots/certificate.jpg) |
+
+| Multiple windows and the About box |
+|---|
+| ![Two overlapping browser windows on the XP desktop, with the About Google Chrome dialog showing version 1.0.154.36](docs/screenshots/about.jpg) |
+
 ## Safety
 
 - The server listens on `127.0.0.1` only, and serves the UI only for `localhost` / `127.0.0.1` / `chrome.localhost`
@@ -130,6 +142,7 @@ LANGUAGES.md           language guide
 CHANGELOG.md           changelog
 LICENSE                MIT license
 docs/                  Simplified Chinese translations
+docs/screenshots/      screenshots used in this README
 ```
 
 ## Test status

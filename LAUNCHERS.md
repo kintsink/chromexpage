@@ -1,6 +1,6 @@
 # Launcher guide
 
-[English](LAUNCHERS.md) · [简体中文](docs/启动说明.zh-CN.md)
+[English](LAUNCHERS.md) · [简体中文](docs/launchers.zh-CN.md)
 
 The three launchers all do the same two things: check that Node.js 20 or newer is installed, then run
 `node server.js --launch`. Everything else — port selection, "already running" detection, opening the

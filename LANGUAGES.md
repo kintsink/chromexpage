@@ -1,6 +1,6 @@
 # Languages
 
-[English](LANGUAGES.md) · [简体中文](docs/多语言功能说明.zh-CN.md)
+[English](LANGUAGES.md) · [简体中文](docs/languages.zh-CN.md)
 
 The UI is available in English and Simplified Chinese.
 

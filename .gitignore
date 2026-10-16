@@ -1,0 +1,16 @@
+# 编辑器 / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# 依赖与日志（本项目零依赖，不需要 node_modules）/ deps and logs (zero-dependency project)
+node_modules/
+npm-debug.log*
+*.log
+
+# 本地临时文件 / local scratch
+*.tmp
+
+# 历史副本：只留本地，不发布 / local-only history snapshots, never published
+_backup/

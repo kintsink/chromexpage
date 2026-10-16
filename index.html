@@ -1,0 +1,2096 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>新标签页 - Google Chrome</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 16L3 8.5A15 15 0 0 1 29 8.5Z' fill='%23e0352b'/%3E%3Cpath d='M16 16V31A15 15 0 0 1 3 8.5Z' fill='%2334a34f'/%3E%3Cpath d='M16 16L29 8.5A15 15 0 0 1 16 31Z' fill='%23f6c61a'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23fff'/%3E%3Ccircle cx='16' cy='16' r='5.4' fill='%234a8af4'/%3E%3C/svg%3E">
+<style>
+:root {
+  --frame-a: #4680d8; --frame-b: #7eadec; --fh: 29px;
+  --stroke: #6585b8; --tab: #bdd4f4; --tab-hover: #d3e3f8; --tab-on: #eef4fc;
+  --bar-a: #eef4fc; --bar-b: #dbe7f7; --bar-line: #a2b5d2;
+  --ui: Tahoma, "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --web: Helvetica, Arial, "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
+body { font: 12px/1.4 var(--ui); color: #000; background: #3a6ea5; cursor: default;
+  -webkit-user-select: none; user-select: none; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: default; }
+svg.sprite { position: absolute; width: 0; height: 0; }
+.ic { width: 18px; height: 18px; fill: currentColor; display: block; flex: none; }
+
+/* ---------- 动画 / Animation ---------- */
+@property --fill { syntax: '<color>'; inherits: true; initial-value: #bdd4f4; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-5px); } }
+@keyframes dlg-in { from { opacity: 0; transform: scale(.93); } }
+@keyframes page-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes tile-in { from { opacity: 0; transform: scale(.9); } }
+@keyframes bar-in { from { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; } to { max-height: 80px; } }
+@keyframes task-in { from { width: 0; padding-left: 0; padding-right: 0; opacity: 0; } }
+@keyframes drift { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
+.out { animation: fade-out .1s ease-in forwards !important; pointer-events: none; }
+
+/* ---------- XP 桌面 / XP desktop ---------- */
+#desktop { position: fixed; inset: 0 0 30px 0; overflow: hidden;
+  background: linear-gradient(#2a66c9 0%, #5c9be6 40%, #a8cff5 64%, #d9edff 76%); }
+#desktop::before, #desktop::after { content: ""; position: absolute; border-radius: 50%; }
+#desktop::before { left: -25%; right: -5%; bottom: -62%; height: 100%;
+  background: radial-gradient(ellipse at 42% 0%, #9bd74c, #63aa2e 42%, #3f8420 78%); }
+#desktop::after { left: 38%; right: -50%; bottom: -74%; height: 105%;
+  background: radial-gradient(ellipse at 28% 0%, #7fc53c, #4e9726 48%, #357a1c); }
+.cloud { position: absolute; left: 0; top: 8%; width: 230px; height: 62px; opacity: .8; filter: blur(5px);
+  animation: drift 170s linear -40s infinite;
+  background: radial-gradient(ellipse 40% 60% at 30% 60%, #fff 40%, transparent 72%),
+    radial-gradient(ellipse 35% 70% at 55% 45%, #fff 40%, transparent 72%),
+    radial-gradient(ellipse 30% 50% at 76% 62%, #fff 40%, transparent 72%); }
+.cloud.c2 { top: 21%; width: 320px; height: 84px; opacity: .6; animation-duration: 240s; animation-delay: -150s; }
+.cloud.c3 { top: 3%; width: 160px; height: 44px; opacity: .55; animation-duration: 130s; animation-delay: -95s; }
+.desk-icon { position: absolute; left: 12px; top: 12px; z-index: 1; width: 78px; padding: 4px 2px; border: 0;
+  background: none; text-align: center; color: #fff; text-shadow: 1px 1px 2px #000; }
+.desk-icon svg { width: 36px; height: 36px; display: block; margin: 0 auto 4px; filter: drop-shadow(1px 2px 2px rgba(0,0,0,.4)); }
+.desk-icon span { padding: 0 2px; }
+.desk-icon:focus { outline: none; }
+.desk-icon:focus span { background: #0b61ff; outline: 1px dotted #fff; }
+
+/* ---------- 窗口（可多开）/ Windows (several can be open) ---------- */
+.win { position: fixed; z-index: 10; display: flex; flex-direction: column;
+  background: linear-gradient(var(--frame-a), var(--frame-b) var(--fh), var(--frame-b)); }
+.win.max { inset: 0 0 30px 0; }
+.win:not(.max) { --fh: 46px; padding: 0 4px 4px; border-radius: 8px 8px 0 0;
+  box-shadow: 0 0 0 1px #2d5fb4, 3px 5px 20px rgba(0, 0, 40, .5); }
+.win.min, .win.closed { display: none; }
+/* 未激活窗口整体褪色，和真实 XP 多窗口一样 / Inactive windows look slightly faded, as on real XP */
+.win:not(.focused) { filter: saturate(.82) brightness(.97); }
+
+.frame { position: relative; z-index: 3; flex: none; height: var(--fh); }
+.tabstrip { position: absolute; left: 4px; right: 172px; bottom: 0; height: 26px; display: flex; align-items: flex-end; }
+.win:not(.max) .tabstrip { left: 2px; }
+.brand { position: absolute; right: 100px; top: 3px; font: bold 13px Georgia, "Times New Roman", serif;
+  color: rgba(255, 255, 255, .82); letter-spacing: .3px; text-shadow: 0 1px 0 rgba(0, 0, 70, .3); pointer-events: none; }
+.winctl { position: absolute; right: 5px; top: 0; display: flex; height: 18px; overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .65); border-top: 0; border-radius: 0 0 5px 5px;
+  box-shadow: 0 1px 2px rgba(0, 0, 60, .35); }
+.winctl button { width: 25px; padding: 0; border: 0; border-left: 1px solid rgba(255, 255, 255, .5);
+  background: linear-gradient(#a2c4f3, #5f95e2); display: grid; place-items: center; }
+.winctl button:first-child { border-left: 0; }
+.winctl button:hover { background: linear-gradient(#c3dafa, #77a8ec); }
+.winctl button:active { background: linear-gradient(#5f95e2, #8fb7ee); }
+.winctl .wClose { width: 40px; }
+.winctl .wClose:hover { background: linear-gradient(#f3a896, #d2442a); }
+.winctl svg { width: 11px; height: 11px; fill: none; stroke: #fff; stroke-width: 1.6; filter: drop-shadow(0 1px 0 rgba(0,0,80,.4)); }
+/* 最大化按钮的图标随窗口状态切换：窗口态显示“最大化”，最大化后显示“还原”
+   The maximize icon follows the window state: "maximize" when windowed, "restore" when maximized */
+.winctl .wMax svg .ic-restore { display: none; }
+.win.max .winctl .wMax svg .ic-max { display: none; }
+.win.max .winctl .wMax svg .ic-restore { display: block; }
+
+/* ---------- 窗口拉伸（8 个方向热区）/ Window resizing (8 handles) ---------- */
+.win:not(.max) .rz { position: absolute; z-index: 20; }
+.win:not(.max) .rz.n { top: -3px; left: 8px; right: 8px; height: 6px; cursor: n-resize; }
+.win:not(.max) .rz.s { bottom: -3px; left: 8px; right: 8px; height: 6px; cursor: s-resize; }
+.win:not(.max) .rz.w { left: -3px; top: 8px; bottom: 8px; width: 6px; cursor: w-resize; }
+.win:not(.max) .rz.e { right: -3px; top: 8px; bottom: 8px; width: 6px; cursor: e-resize; }
+.win:not(.max) .rz.nw { top: -3px; left: -3px; width: 12px; height: 12px; cursor: nw-resize; }
+.win:not(.max) .rz.ne { top: -3px; right: -3px; width: 12px; height: 12px; cursor: ne-resize; }
+.win:not(.max) .rz.sw { bottom: -3px; left: -3px; width: 12px; height: 12px; cursor: sw-resize; }
+.win:not(.max) .rz.se { bottom: -3px; right: -3px; width: 12px; height: 12px; cursor: se-resize; }
+body.dragging iframe { pointer-events: none; }
+
+/* 标签 / Tabs */
+.tab { --fill: var(--tab); position: relative; z-index: 1; flex: 0 1 212px; min-width: 46px; height: 25px;
+  display: flex; margin-left: -9px; outline: none; transition: --fill .14s; }
+.tab.sliding { overflow: hidden; }
+.tab:first-child { margin-left: 0; }
+.tab:hover { --fill: var(--tab-hover); z-index: 2; }
+.tab.active { --fill: var(--tab-on); z-index: 3; height: 26px; margin-bottom: -1px; }
+.tab:focus-visible .ttl { text-decoration: underline; }
+.tab .cap { flex: none; width: 16px; height: 100%; display: block; }
+.tab .cap.r { transform: scaleX(-1); }
+.tab .cap .f { fill: var(--fill); }
+.tab .cap .s { fill: none; stroke: var(--stroke); vector-effect: non-scaling-stroke; }
+.tab .mid { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; margin: 0 -1px; padding-top: 1px;
+  background: var(--fill); border-top: 1px solid var(--stroke); }
+.tab .ttl { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent); }
+.tab .x { flex: none; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 50%; background: none;
+  display: grid; place-items: center; color: #5d6f8c; transition: background-color .12s, color .12s; }
+.tab .slot > .fav { animation: fade-in .2s; }
+.tab .x svg { width: 8px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.tab .x:hover { background: #c43a32; color: #fff; }
+.tabstrip.crowded .tab:not(.active) .x { display: none; }
+.newtab { flex: none; width: 28px; height: 17px; margin: 0 0 5px 0; padding: 0; border: 0; background: none; }
+.newtab svg { width: 28px; height: 17px; display: block; }
+.newtab .b { fill: rgba(255, 255, 255, .38); stroke: var(--stroke); transition: fill .14s; }
+.newtab .p { fill: none; stroke: #fff; stroke-width: 1.8; transition: stroke .14s; }
+.newtab:active svg { transform: translateY(1px); }
+.newtab:hover .b { fill: rgba(255, 255, 255, .75); }
+.newtab:hover .p { stroke: #4a6a9c; }
+
+/* ---------- 工具栏 / Toolbar ---------- */
+.toolbar { position: relative; z-index: 2; flex: none; display: flex; align-items: center; gap: 1px; height: 36px;
+  padding: 0 5px; background: linear-gradient(var(--bar-a), var(--bar-b));
+  border-top: 1px solid var(--stroke); border-bottom: 1px solid var(--bar-line); }
+.tb { flex: none; height: 27px; min-width: 29px; padding: 0 4px; display: inline-flex; align-items: center;
+  justify-content: center; border: 1px solid transparent; border-radius: 3px; background: none; color: #4a6a9c;
+  transition: border-color .12s, opacity .2s; }
+.tb:hover:not(:disabled), .tb.open { border-color: #9db3d2; background: linear-gradient(#fff, #e2ecf9); }
+.tb:active:not(:disabled), .tb.open { background: linear-gradient(#cfdcf0, #e6eefa); }
+.tb:disabled { opacity: .35; }
+.tb .caret { width: 7px; height: 7px; margin-left: 1px; }
+.omni { position: relative; flex: 1; min-width: 70px; height: 26px; margin: 0 4px; display: flex;
+  border: 1px solid #93a9ca; border-radius: 4px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.omni:focus-within { border-color: #5b8fd9; box-shadow: 0 0 0 1px rgba(91, 143, 217, .4); }
+.star, .gobtn { flex: none; width: 28px; padding: 0; border: 0; display: grid; place-items: center;
+  background: linear-gradient(#f9fbfe, #dde8f7); color: #6f8ab3; }
+.star { border-right: 1px solid #b5c5dd; border-radius: 3px 0 0 3px; }
+.gobtn { border-left: 1px solid #b5c5dd; border-radius: 0 3px 3px 0; color: #4a6a9c; }
+.star:hover:not(:disabled), .gobtn:hover { background: linear-gradient(#fff, #cfdff5); }
+.star:disabled { opacity: .45; }
+.star .ic { fill: #fff; stroke: currentColor; stroke-width: 1.2; transition: fill .2s, stroke .2s; }
+.star.on .ic { fill: #fbcf2b; stroke: #c98f00; }
+.gobtn { position: relative; }
+.gobtn .ic { position: absolute; inset: 0; margin: auto; transition: opacity .16s, transform .16s; }
+.gobtn .stop { opacity: 0; transform: rotate(-90deg) scale(.5); }
+.gobtn.loading .go { opacity: 0; transform: scale(.5); }
+.gobtn.loading .stop { opacity: 1; transform: none; }
+/* 地址栏：平时白底；https 只显示锁。黄底是旧 Chrome 聚焦编辑地址时的样子，
+   只在用户点进地址栏编辑的瞬间出现，失焦即恢复白底
+   Address bar: white normally; https only shows the lock. The yellow background is how old Chrome
+   looked while editing the address, so it appears only while the field is focused. */
+.field { flex: 1; min-width: 0; display: flex; align-items: center; transition: background-color .25s; }
+.field.secure.editing { background: #fffac9; }
+.field .url { flex: 1; min-width: 0; height: 100%; padding: 0 6px; border: 0; outline: 0; background: transparent;
+  font: 13px var(--ui); -webkit-user-select: text; user-select: text; cursor: text; }
+.lock { border: 0; background: none; padding: 0; width: 16px; height: 16px; margin-right: 4px; display: none;
+  place-items: center; color: #8a6d00; border-radius: 2px; }
+/* 里面的 svg 必须显式给尺寸，否则会按 SVG 默认的 300×150 渲染、撑出按钮
+   The inner svg needs an explicit size, otherwise it renders at the SVG default of 300×150 */
+.lock svg { width: 11px; height: 11px; display: block; }
+.lock:hover { outline: 1px dotted #8a6d00; }
+.field.secure .lock { display: grid; }
+.suggest { position: absolute; left: 27px; right: 27px; top: 25px; z-index: 50; padding: 2px 0; background: #fff;
+  border: 1px solid #93a9ca; box-shadow: 0 3px 8px rgba(0, 0, 0, .28); font-size: 13px; animation: pop-in .1s ease-out; }
+.suggest[hidden] { display: none; }
+.sg { display: flex; align-items: center; gap: 6px; padding: 3px 7px; white-space: nowrap; overflow: hidden; }
+.sg.sel, .sg:hover { background: #d5e3f7; }
+.sg .u { color: #0a7a0a; overflow: hidden; text-overflow: ellipsis; }
+.sg .t { color: #666; overflow: hidden; text-overflow: ellipsis; }
+.sg .q { overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- 书签栏 / 信息栏 · Bookmarks bar / info bar ---------- */
+.bookbar { position: relative; z-index: 2; flex: none; display: flex; align-items: center; height: 26px;
+  margin-top: -1px; padding: 0 5px; background: var(--bar-b); border-bottom: 1px solid var(--bar-line); }
+.bookbar.off { height: 0; margin-top: 0; border-bottom-width: 0; overflow: hidden; visibility: hidden; }
+.bookbar.slide { overflow: hidden; transition: height .18s ease-out, margin-top .18s, border-bottom-width .18s, visibility 0s; }
+.bookbar.slide.off { transition: height .18s ease-in, margin-top .18s, border-bottom-width .18s, visibility 0s .18s; }
+.bookbar .items { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 1px; overflow: hidden; }
+.bookbar .empty { padding-left: 4px; color: #5a6c8a; white-space: nowrap; }
+.bm { flex: none; max-width: 170px; height: 21px; padding: 0 5px; display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid transparent; border-radius: 3px; background: none; transition: border-color .12s; }
+.bm.new { animation: tile-in .3s ease-out; }
+.bm:hover, .bm.open { border-color: #9db3d2; background: linear-gradient(#fff, #e2ecf9); }
+.bm .l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.otherBm { margin-left: 4px; }
+.infobar { position: relative; z-index: 1; flex: none; display: flex; align-items: center; gap: 8px; padding: 4px 8px;
+  background: linear-gradient(#fff8cf, #f9e48d); border-bottom: 1px solid #c9b45e; overflow: hidden;
+  animation: bar-in .25s ease-out; -webkit-user-select: text; user-select: text; }
+.infobar[hidden] { display: none; }
+.infobar .msg { flex: 1; }
+.infobar code { padding: 0 4px; font-family: Consolas, Menlo, monospace; background: rgba(255, 255, 255, .65); border: 1px solid #d8c56f; }
+.infobar button { border: 0; background: none; font-size: 14px; line-height: 1; padding: 2px 5px; }
+
+.fav { position: relative; flex: none; width: 16px; height: 16px; display: inline-block;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 1.5h6l3 3v10h-9z' fill='%23fff' stroke='%238b9bb5'/%3E%3Cpath d='M9.5 1.5v3h3' fill='none' stroke='%238b9bb5'/%3E%3C/svg%3E") center / 16px no-repeat; }
+.fav.has { background: none; }
+.fav img { width: 16px; height: 16px; display: block; opacity: 0; transition: opacity .2s; }
+.fav.has img { opacity: 1; }
+.throb { flex: none; width: 14px; height: 14px; margin: 1px; display: inline-block; border-radius: 50%;
+  border: 2px solid #b6cbea; border-top-color: #2f6fd0; animation: spin .7s linear infinite;
+  transition: border-color .2s; }
+.throb.wait { border-color: #cdd3dd; border-top-color: #7d8aa0; animation-direction: reverse; animation-duration: 1.1s; }
+
+/* ---------- 内容区 / Content area ---------- */
+.views { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #fff; }
+.view { position: absolute; inset: 0; display: none; overflow: hidden; }
+.view.on { display: block; }
+iframe.web { display: block; width: 100%; height: 100%; border: 0; background: #fff; transform-origin: 0 0; }
+.status { position: absolute; left: 0; bottom: 0; z-index: 5; max-width: 60%; padding: 2px 9px 3px 6px; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis; pointer-events: none; color: #333; background: var(--bar-b);
+  border: 1px solid var(--bar-line); border-left: 0; border-bottom: 0; border-radius: 0 4px 0 0; opacity: 0; transition: opacity .3s .15s; }
+.status.show { opacity: 1; transition: opacity .12s; }
+
+.page { position: absolute; inset: 0; overflow: auto; background: #fff; font: 13px/1.5 var(--web);
+  -webkit-user-select: text; user-select: text; cursor: auto; }
+.page .wrap { animation: page-in .22s ease-out; }
+.page a { color: #0000cc; cursor: pointer; }
+.page input[type=text], .page input[type=search] { height: 24px; padding: 0 5px; border: 1px solid #93a9ca; font: 13px var(--web); }
+
+/* 新标签页 / New Tab page */
+.ntp .wrap { max-width: 950px; margin: 0 auto; padding: 20px 20px 34px; display: grid;
+  grid-template-columns: minmax(0, 1fr) 232px; gap: 28px; }
+.ntp h2 { margin: 0 0 12px; font-size: 15px; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 18px; }
+.tile { display: block; color: #000; text-decoration: none; outline: none;
+  animation: tile-in .32s cubic-bezier(.2, .7, .3, 1) both; animation-delay: calc(var(--i, 0) * 30ms + 60ms); }
+.thumb { position: relative; display: block; aspect-ratio: 196 / 128; overflow: hidden; background: #fff;
+  border: 3px solid #dbe6f6; border-radius: 4px; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.tile:hover .thumb, .tile:focus-visible .thumb { border-color: #6f9be6; box-shadow: 0 3px 9px rgba(50, 90, 170, .3); transform: translateY(-2px); }
+.tile:active .thumb { transform: none; box-shadow: none; }
+.tile .lbl { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 5px; font-size: 12px; }
+.tile .lbl .l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile:hover .lbl .l { color: #00c; text-decoration: underline; }
+.shot { position: absolute; inset: 0; display: flex; flex-direction: column; background: linear-gradient(#fff, #f2f5fa); }
+.shot .sb { flex: none; height: 17%; min-height: 14px; padding: 0 7px; display: flex; align-items: center; overflow: hidden;
+  white-space: nowrap; color: #fff; font: bold 10px/1 Arial, sans-serif; background: hsl(var(--h) 52% 50%); }
+.shot .bd { flex: 1; min-height: 0; display: flex; gap: 9%; padding: 8%; align-items: flex-start; }
+.shot b { font: bold clamp(24px, 3.4vw, 44px)/1 Georgia, serif; color: hsl(var(--h) 46% 44%); }
+.shot .ln { flex: 1; display: grid; gap: 7px; padding-top: 5px; }
+.shot .ln i { height: 5px; border-radius: 2px; background: #dfe5ee; }
+.shot .ln i:nth-child(1) { width: 92%; background: hsl(var(--h) 42% 80%); }
+.shot .ln i:nth-child(2) { width: 70%; }
+.shot .ln i:nth-child(3) { width: 84%; }
+.shot .ln i:nth-child(4) { width: 52%; }
+.ntp .more { margin-top: 20px; font-size: 12px; }
+.side section { margin-bottom: 16px; overflow: hidden; background: #f6f9ff; border: 1px solid #c5d7f0; border-radius: 5px; }
+.side h3 { margin: 0; padding: 5px 9px; font-size: 13px; background: #e1ecfe; }
+.side .bd { padding: 8px 9px; }
+.side form { display: flex; gap: 4px; }
+.side form input { flex: 1; min-width: 0; }
+.side .row { display: flex; align-items: center; gap: 5px; padding: 2px 0; font-size: 12px; text-decoration: none; }
+.side .row:hover .l { text-decoration: underline; }
+.side .row .l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side .none { color: #777; font-size: 12px; }
+
+/* 历史记录 / History page */
+.hist .wrap { max-width: 840px; margin: 0 auto; padding: 16px 20px 34px; }
+.hist h1 { margin: 0 0 10px; font-size: 20px; font-weight: normal; }
+.hist .bar { display: flex; gap: 6px; align-items: center; padding: 8px; background: #e1ecfe; border-top: 1px solid #9cc2ef; }
+.hist .bar input { flex: 1; max-width: 320px; }
+.hist .bar a { margin-left: auto; font-size: 12px; }
+.hist h4 { margin: 16px 0 5px; font-size: 13px; }
+.hist .row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.hist .time { flex: none; width: 42px; color: #777; font-size: 12px; }
+.hist .row a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist .dom { flex: none; color: #0a7a0a; font-size: 12px; }
+.hist .none { margin-top: 18px; color: #777; }
+
+/* ---------- 菜单 / 气泡 / XP 对话框 · Menus / bubbles / XP dialogs ---------- */
+.menu { position: fixed; z-index: 1000; min-width: 172px; max-width: 340px; padding: 2px; background: #fff;
+  border: 1px solid #aca899; box-shadow: 2px 2px 3px rgba(0, 0, 0, .35); animation: fade-in .13s ease-out; }
+.mi { position: relative; display: flex; align-items: center; gap: 6px; padding: 3px 22px 3px 24px; white-space: nowrap; }
+.mi .l { overflow: hidden; text-overflow: ellipsis; }
+.mi .fav { margin-left: -19px; }
+.mi .msvg { flex: none; width: 16px; height: 16px; margin-left: -19px; }
+.mi:hover { background: #316ac5; color: #fff; }
+.mi.dis, .mi.dis:hover { background: none; color: #aca899; }
+.mi.chk::before { content: "✓"; position: absolute; left: 8px; }
+.menu .sep { height: 1px; margin: 3px 1px; background: #aca899; }
+.bubble { position: fixed; z-index: 900; width: 330px; padding: 10px 12px 12px; background: #fff;
+  border: 1px solid #93a9ca; border-radius: 5px; box-shadow: 0 3px 10px rgba(0, 0, 0, .3); animation: pop-in .16s ease-out; }
+.bubble h4 { margin: 0 0 9px; font-size: 13px; }
+.bubble .btns { display: flex; justify-content: flex-end; gap: 6px; }
+.overlay { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; background: rgba(0, 0, 0, .1);
+  animation: fade-in .14s ease-out; }
+.xp-dlg { width: min(440px, calc(100vw - 24px)); background: #ece9d8; border: 3px solid #0054e3; border-top: 0;
+  border-radius: 8px 8px 0 0; box-shadow: 3px 4px 14px rgba(0, 0, 0, .45); animation: dlg-in .18s cubic-bezier(.2, .8, .3, 1.15); }
+.xp-title { display: flex; align-items: center; height: 28px; margin: 0 -3px; padding: 0 5px 0 8px; color: #fff;
+  font-weight: bold; font-size: 13px; text-shadow: 1px 1px 1px #0f1089; border-radius: 8px 8px 0 0;
+  background: linear-gradient(#0058ee, #3a93ff 6%, #0b6efc 12%, #0055e5 30%, #0055ea 70%, #0465f5 88%, #003dd7); }
+.xp-title span { flex: 1; }
+.xp-x { width: 21px; height: 21px; padding: 0; color: #fff; font: bold 14px/1 Arial, sans-serif; border: 1px solid #fff;
+  border-radius: 3px; background: linear-gradient(#e9a08c, #d8553a 40%, #c33214); }
+.xp-x:hover { filter: brightness(1.15); }
+.xp-body { padding: 14px 14px 6px; line-height: 1.7; -webkit-user-select: text; user-select: text; }
+.xp-body p { margin: 0 0 8px; }
+.xp-body label { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.xp-body select { height: 21px; border: 1px solid #7f9db9; background: #fff; }
+.xp-body .about { display: flex; gap: 14px; align-items: flex-start; }
+.xp-body .about svg { flex: none; width: 48px; height: 48px; }
+.xp-body small { color: #555; }
+.xp-group { margin: 10px 0 4px; padding: 6px 10px 10px; border: 1px solid #d0d0bf; border-radius: 3px; }
+.xp-group legend { padding: 0 4px; color: #0046d5; }
+.xp-row { display: flex; align-items: center; gap: 10px; }
+.xp-row .xp-btn { flex: none; white-space: nowrap; }
+.xp-row small { line-height: 1.4; }
+.xp-btn:disabled, .xp-btn:disabled:hover { color: #aca899; box-shadow: none; }
+.xp-btns { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px 12px; }
+.xp-btn { min-width: 75px; height: 23px; padding: 0 12px; border: 1px solid #003c74; border-radius: 3px;
+  background: linear-gradient(#fff, #f0efe8 85%, #d6d0c5); transition: box-shadow .12s; }
+.xp-btn:hover { box-shadow: inset 0 0 0 2px #f8b636; }
+.xp-btn:focus-visible { outline: 1px dotted #000; outline-offset: -4px; box-shadow: inset 0 0 0 2px #98b8ea; }
+.xp-btn:active { background: linear-gradient(#d6d0c5, #f0efe8); }
+
+/* ---------- 证书信息（锁图标点开）/ Certificate info (from the lock icon) ---------- */
+.cert-head { display: flex; gap: 10px; align-items: flex-start; }
+.cert-head svg { flex: none; width: 28px; height: 28px; }
+.cert-identity { font-weight: bold; word-break: break-all; }
+.cert-host { color: #0a7a0a; word-break: break-all; }
+.cert-line { display: flex; gap: 6px; padding: 2px 0; font-size: 12px; }
+.cert-line .k { flex: none; width: 96px; color: #555; }
+.cert-line .v { word-break: break-all; }
+.cert-link { display: block; margin: 10px 0 0; color: #0000cc; text-decoration: underline; cursor: pointer;
+  background: none; border: 0; padding: 0; font-size: 12px; text-align: left; }
+.cert-loading { color: #777; padding: 8px 0; }
+.cert-tabs { display: flex; margin: -14px -14px 10px; border-bottom: 2px solid #0054e3; }
+.cert-tab { padding: 5px 14px; border: 1px solid #aca899; border-bottom: 0; background: #f4f2e8; border-radius: 3px 3px 0 0;
+  color: #333; position: relative; top: 0; }
+.cert-tab.on { background: #ece9d8; color: #000; font-weight: bold; z-index: 1; padding-bottom: 6px; }
+.cert-fields { max-height: 260px; overflow: auto; border: 1px solid #aca899; background: #fff; }
+.cert-fields .row { display: flex; border-bottom: 1px dotted #d8d4c8; }
+.cert-fields .row:hover { background: #f0f6ff; }
+.cert-fields .k { flex: none; width: 40%; padding: 3px 8px; background: #f4f2e8; border-right: 1px solid #aca899; }
+.cert-fields .v { padding: 3px 8px; word-break: break-all; -webkit-user-select: text; user-select: text; }
+.cert-note { margin-top: 8px; color: #555; font-size: 11px; }
+
+/* ---------- XP 任务栏 / XP taskbar ---------- */
+#taskbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 500; height: 30px; display: flex; align-items: stretch; color: #fff;
+  background: linear-gradient(#1f2f86 0, #3165c4 3%, #3682e5 6%, #4490e6 10%, #3883e5 12%, #2b71e0 15%, #2663da 18%, #235bd6 20%, #2157d6 46%, #245ddb 82%, #2562df 91%, #1941a5); }
+#start { flex: none; display: flex; align-items: center; gap: 5px; padding: 0 16px 2px 7px; border: 0; color: #fff;
+  font: italic bold 16px var(--ui); text-shadow: 1px 1px 2px #1b4a1b; border-radius: 0 10px 10px 0;
+  background: linear-gradient(#78c873, #46a043 12%, #3c923a 50%, #318331 88%, #245e24);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .45), 1px 0 3px rgba(0, 0, 0, .55); }
+#start:hover { filter: brightness(1.1); }
+#start:active { filter: brightness(.88); }
+#start svg { width: 19px; height: 19px; filter: drop-shadow(1px 1px 1px rgba(0,0,0,.4)); }
+#tasks { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; padding: 0 8px; }
+.task { width: 176px; max-width: 100%; height: 23px; padding: 0 8px; display: flex; align-items: center; gap: 5px;
+  border: 0; border-radius: 3px; color: #fff; text-align: left; overflow: hidden;
+  background: linear-gradient(#4a8df7, #3a7ef0 50%, #2f6fe0);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .4), inset 0 -1px 1px rgba(0, 0, 0, .2);
+  animation: task-in .22s ease-out; transition: box-shadow .12s; }
+.task[hidden] { display: none; }
+.task.on { background: #1e52b7; box-shadow: inset 1px 1px 2px rgba(0, 0, 0, .55); }
+.task svg { flex: none; width: 16px; height: 16px; }
+.task span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#tray { flex: none; display: flex; align-items: center; padding: 0 12px; border-left: 1px solid #1042af;
+  box-shadow: inset 1px 0 1px #18bbff;
+  background: linear-gradient(#0c59b9 0, #139ee9 6%, #18b5f2 10%, #139beb 14%, #1290e8 19%, #0d8dea 63%, #0d9ff1 81%, #0f9eed 88%, #119be9 91%, #1392e2 94%, #095bc9); }
+
+@media (max-width: 700px) {
+  .ntp .wrap { grid-template-columns: minmax(0, 1fr); }
+  .brand { display: none; }
+  .tabstrip { right: 100px; }
+  #start { font-size: 14px; padding-right: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
+  .throb { animation-duration: 2.8s !important; }
+  .cloud { animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 18 18"><path d="M10 2.5 2.5 9l7.5 6.5V11.4h5.5V6.6H10z"/></symbol>
+  <symbol id="i-fwd" viewBox="0 0 18 18"><path d="M8 2.5 15.5 9 8 15.5V11.4H2.5V6.6H8z"/></symbol>
+  <symbol id="i-reload" viewBox="0 0 18 18"><path d="M13.3 5.3A5.6 5.6 0 1 0 14.6 9.6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.6 1.6v5.6H10z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 18 18"><path d="m9 1.8 2.2 4.8 5.2.6-3.9 3.5 1.1 5.2L9 13.2l-4.6 2.7 1.1-5.2L1.6 7.2l5.2-.6z"/></symbol>
+  <symbol id="i-go" viewBox="0 0 18 18"><path d="M6 4l7 5-7 5z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 18 18"><path d="M5 5l8 8M13 5l-8 8" fill="none" stroke="currentColor" stroke-width="2.2"/></symbol>
+  <symbol id="i-page" viewBox="0 0 18 18"><path d="M4.5 2.5h6l3.5 3.5v9.5h-9.500z" fill="#fff" stroke="currentColor"/><path d="M10.5 2.500v3.500h3.500" fill="none" stroke="currentColor"/><path d="M6.500 9h5M6.500 11.500h5" fill="none" stroke="currentColor" opacity=".55"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 18 18"><path d="M15.4 4.6 13.2 6.800 11.400 6.400 11 4.600 13.200 2.400A4 4 0 0 0 8.300 7.300L2.600 13A1.700 1.700 0 0 0 5 15.400L10.700 9.700A4 4 0 0 0 15.400 4.600z"/></symbol>
+  <symbol id="i-caret" viewBox="0 0 8 8"><path d="M0 2h8L4 6.500z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 14 14"><path d="M4 6V4.300a3 3 0 0 1 6 0V6" fill="none" stroke="currentColor" stroke-width="1.500"/><rect x="2.500" y="6" width="9" height="6.500" rx="1" fill="#f3c63a" stroke="#8a6d00"/></symbol>
+  <symbol id="i-cert" viewBox="0 0 28 28"><path d="M14 1l3.5 2 4-.5 1 4 3.5 2-1.5 3.5 1.5 3.5-3.5 2-1 4-4-.5-3.5 2-3.5-2-4 .5-1-4-3.5-2L5 15.5 3.5 12l3.5-2 1-4 4 .5z" fill="#f6c61a" stroke="#b78a1e"/><path d="M9 13.5l3.5 3.5L19 10.5" fill="none" stroke="#7a5c00" stroke-width="2.2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 16 16"><path d="M1.500 3.500h4.500l1.500 1.500h7v8h-13z" fill="#f6d674" stroke="#b78a1e"/></symbol>
+  <symbol id="i-chrome" viewBox="0 0 32 32"><path d="M16 16 3 8.500A15 15 0 0 1 29 8.500z" fill="#e0352b"/><path d="M16 16v15A15 15 0 0 1 3 8.500z" fill="#34a34f"/><path d="M16 16 29 8.500A15 15 0 0 1 16 31z" fill="#f6c61a"/><circle cx="16" cy="16" r="7" fill="#fff"/><circle cx="16" cy="16" r="5.400" fill="#4a8af4"/><ellipse cx="16" cy="8" rx="10" ry="5.500" fill="#fff" opacity=".22"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 20 20"><path d="M2 4.500q3.500-2 7-.500v6q-3.500-1.500-7 .500z" fill="#e8492f"/><path d="M10.500 4.500q3.500 1.500 7-.500v6q-3.500 2-7 .500z" fill="#6cbb3c"/><path d="M2 11.500q3.500-2 7-.500v6q-3.500-1.500-7 .500z" fill="#3f8ee8"/><path d="M10.500 11.500q3.500 1.500 7-.500v6q-3.500 2-7 .500z" fill="#f7c530"/></symbol>
+</svg>
+
+<div id="desktop">
+  <div class="cloud"></div><div class="cloud c2"></div><div class="cloud c3"></div>
+  <button class="desk-icon" id="deskIcon" title="双击打开">
+    <!-- title 只是兜底，界面语言确定后由 applyI18nPage() 覆盖 / fallback only; applyI18nPage() overrides it once the language is known -->
+    <svg><use href="#i-chrome"/></svg><span>Google Chrome</span>
+  </button>
+</div>
+
+<!-- 窗口模板：多窗口时克隆这份结构；子元素全部用 class 查找，作用域限于各自窗口
+     Window template: cloned for every window; children are looked up by class, scoped to their own window -->
+<template id="winTpl">
+  <div class="win max focused" tabindex="-1">
+    <div class="frame">
+      <div class="tabstrip" role="tablist">
+        <button class="newtab" title="新标签页" aria-label="新标签页">
+          <svg viewBox="0 0 28 17"><path class="b" d="M2.500 1.500H19.500c1.800 0 2.900 1 3.500 2.700l2.900 8.300c.5 1.600-.2 3-1.900 3H8.500c-1.800 0-2.900-1-3.500-2.700L2.100 4.500C1.600 2.900 1.200 1.500 2.500 1.500z"/><path class="p" d="M14 5v7M10.500 8.500h7"/></svg>
+        </button>
+      </div>
+      <div class="brand">Google</div>
+      <div class="winctl">
+        <button class="wMin" title="最小化" aria-label="最小化"><svg viewBox="0 0 11 11"><path d="M2 8.500h7"/></svg></button>
+        <button class="wMax" title="最大化" aria-label="最大化或还原"><svg viewBox="0 0 11 11"><g class="ic-max"><rect x="2" y="2" width="7" height="7" fill="#fff" stroke="#fff"/></g><g class="ic-restore"><rect x="1.5" y="3.5" width="6" height="6" fill="#fff" stroke="#fff"/><path d="M3.5 3.5v-2h6v6h-2" fill="none" stroke="#fff"/></g></svg></button>
+        <button class="wClose" title="关闭" aria-label="关闭"><svg viewBox="0 0 11 11"><path d="M2.500 2.500l6 6M8.500 2.500l-6 6"/></svg></button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="tb back" title="后退"><svg class="ic"><use href="#i-back"/></svg></button>
+      <button class="tb fwd" title="前进"><svg class="ic"><use href="#i-fwd"/></svg></button>
+      <button class="tb reload" title="重新加载此页"><svg class="ic"><use href="#i-reload"/></svg></button>
+      <div class="omni">
+        <button class="star" title="为此页添加书签"><svg class="ic"><use href="#i-star"/></svg></button>
+        <div class="field">
+          <input class="url" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="地址和搜索栏">
+          <button class="lock" aria-label="安全连接" title="安全连接"><svg><use href="#i-lock"/></svg></button>
+        </div>
+        <button class="gobtn" title="转到"><svg class="ic go"><use href="#i-go"/></svg><svg class="ic stop"><use href="#i-stop"/></svg></button>
+        <div class="suggest" hidden></div>
+      </div>
+      <button class="tb pageMenu" title="控制当前页"><svg class="ic"><use href="#i-page"/></svg><svg class="ic caret"><use href="#i-caret"/></svg></button>
+      <button class="tb wrenchMenu" title="自定义及控制 Google Chrome"><svg class="ic"><use href="#i-wrench"/></svg><svg class="ic caret"><use href="#i-caret"/></svg></button>
+    </div>
+    <div class="bookbar off">
+      <div class="items"></div>
+      <button class="bm otherBm"><svg class="ic" style="width:16px;height:16px"><use href="#i-folder"/></svg><span class="l">其他书签</span></button>
+    </div>
+    <div class="infobar" hidden><span class="msg"></span><button title="关闭" aria-label="关闭提示">×</button></div>
+    <div class="views"><div class="status"></div></div>
+    <div class="rz n"></div><div class="rz s"></div><div class="rz w"></div><div class="rz e"></div>
+    <div class="rz nw"></div><div class="rz ne"></div><div class="rz sw"></div><div class="rz se"></div>
+  </div>
+</template>
+
+<div id="taskbar">
+  <button id="start"><svg><use href="#i-flag"/></svg><span class="start-label">开始</span></button>
+  <div id="tasks"></div>
+  <div id="tray"><span id="clock"></span></div>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================ 多语言 / i18n
+// 键名点分小写；{0} {1} 会被参数替换。默认语言跟随系统浏览器语言：
+// 中文系统用中文，其他一律英文；用户在选项里改过则记住选择。
+// Keys are dotted lowercase; {0} {1} are replaced by arguments. The default language follows the
+// browser: Chinese for zh, English otherwise. A choice made in Options is remembered.
+const MESSAGES = {
+  zh: {
+    'lang.name': '中文',
+    'win.newtab': '新标签页', 'win.about': '关于 Google Chrome',
+    'win.options': 'Google Chrome 选项', 'win.close': '关闭',
+    'win.min': '最小化', 'win.max': '最大化', 'win.restore': '向下还原',
+    'win.title': '新标签页 - Google Chrome', 'win.exit': 'Windows XP',
+    'win.newWindow': '新建窗口',
+    'tab.new': '新建标签页', 'tab.reload': '重新加载', 'tab.dup': '复制',
+    'tab.close': '关闭标签页', 'tab.closeOthers': '关闭其他标签页',
+    'tab.closeTip': '关闭标签页', 'tab.newTip': '新标签页',
+    'nav.back': '后退', 'nav.fwd': '前进', 'nav.reload': '重新加载此页',
+    'nav.stop': '停止加载此页', 'nav.go': '转到',
+    'nav.addBm': '为此页添加书签', 'nav.editBm': '修改此页的书签',
+    'nav.secure': '安全连接', 'nav.addr': '地址和搜索栏',
+    'nav.pageMenu': '控制当前页', 'nav.mainMenu': '自定义及控制 Google Chrome',
+    'nav.openSys': '在系统浏览器中打开此页',
+    'nav.zoomIn': '放大', 'nav.zoomOut': '缩小',
+    'nav.zoomReset': '正常大小（当前 {0}%）',
+    'menu.showBar': '始终显示书签栏', 'menu.newWindow': '新建窗口',
+    'menu.history': '历史记录', 'menu.clearData': '清除浏览数据…',
+    'menu.options': '选项', 'menu.about': '关于 Google Chrome',
+    'menu.exit': '退出', 'menu.startAbout': '关于这个复刻版', 'menu.startLabel': '开始',
+    'menu.reload': '重新加载',
+    'bm.other': '其他书签', 'bm.emptyBar': '为了快速访问，请将您的书签放在这里的书签栏中。',
+    'bm.empty': '（空）', 'bm.open': '打开', 'bm.openNew': '在新标签页中打开',
+    'bm.openNewWin': '在新窗口中打开',
+    'bm.delete': '删除', 'bm.added': '已添加书签！', 'bm.edit': '修改书签', 'bm.name': '名称：',
+    'ntp.most': '最常访问的网站', 'ntp.searchIn': '在 {0} 中搜索', 'ntp.search': '搜索',
+    'ntp.recentBm': '最近的书签', 'ntp.recentBmEmpty': '点击地址栏左侧的星标即可添加书签。',
+    'ntp.recentClosed': '最近关闭的标签页', 'ntp.recentClosedEmpty': '暂时没有。',
+    'ntp.fullHistory': '显示完整的历史记录 »',
+    'hist.title': '历史记录', 'hist.search': '搜索历史记录', 'hist.clear': '清除浏览数据…',
+    'hist.none': '没有找到匹配的历史记录。', 'hist.empty': '还没有历史记录，去逛逛网页吧。',
+    'dlg.clear': '清除浏览数据', 'dlg.clearIntro': '清除以下项目：',
+    'dlg.clearHist': '浏览历史记录和最近关闭的标签页', 'dlg.clearBm': '全部书签',
+    'dlg.engine': '默认搜索引擎：', 'dlg.alwaysBar': '始终显示书签栏',
+    'dlg.lang': '界面语言（Language）：', 'dlg.langNote': '更改语言后界面会刷新，已打开的标签页会关闭',
+    'dlg.historyGroup': '历史记录',
+    'dlg.clearLocal': '清除本地历史记录', 'dlg.clearLocalConfirm': '确定清除',
+    'dlg.clearLocalCount': '本机保存了 {0} 条浏览记录', 'dlg.clearLocalWarn': '将删除 {0} 条记录和最近关闭的标签页，无法恢复。再点一次确认。',
+    'dlg.clearLocalDone': '已清除。书签和设置保持不变。', 'dlg.clearLocalEmpty': '没有可清除的历史记录',
+    'dlg.ok': '确定', 'dlg.cancel': '取消',
+    'about.version': '1.0.154.36（怀旧复刻版）',
+    'about.proxyOn': '网页通过本机代理加载，绝大多数网站可以正常打开。',
+    'about.proxyOff': '当前未连接本机代理，只能打开允许被嵌入的网站。',
+    'about.note': '这是一个纯前端的怀旧界面复刻，仅供娱乐，与 Google 没有任何关联。',
+    'engine.note.bing': '可能没有结果',
+    'site.wikipedia': '维基百科', 'site.google2008': '2008 年的 Google',
+    'site.portal': '百度一下', 'site.search': '必应', 'site.archive': '互联网档案馆',
+    'engine.ddg': 'DuckDuckGo', 'engine.google': 'Google', 'engine.baidu': '百度', 'engine.bing': '必应',
+    'google.hint': '谷歌不经代理直接打开：从结果点进的网站可能拒绝显示、地址栏不更新；按住 Cmd/Ctrl 点击可在浏览器新标签页打开',
+    'info.offline': '未连接到本机代理，很多网站会拒绝在这里显示。请在 chrome-xp 目录运行 ',
+    'info.offline2': '，然后打开 ',
+    'frame.web': '网页内容',
+    'search.loading': '正在等待 {0}…',
+    'sg.search': '- 用 {0} 搜索',
+    // 证书 / Certificate
+    'cert.title': '证书', 'cert.connTitle': '安全连接',
+    'cert.identity': '已通过加密连接访问',
+    'cert.certBy': '证书由以下机构颁发', 'cert.expires': '有效期',
+    'cert.viewInfo': '证书信息 »', 'cert.loading': '正在读取证书…',
+    'cert.err': '无法读取证书（{0}）',
+    'cert.tab.general': '常规', 'cert.tab.detail': '详细信息',
+    'cert.issuedTo': '颁发给', 'cert.issuedBy': '颁发者', 'cert.validity': '有效期',
+    'cert.subject': '使用者', 'cert.issuer': '颁发者',
+    'cert.serial': '序列号', 'cert.fingerprint': 'SHA-256 指纹',
+    'cert.san': '使用者备用名称', 'cert.from': '起始日期', 'cert.to': '失效日期',
+    'cert.proto': '协议', 'cert.cipher': '加密套件', 'cert.bits': '密钥位数',
+    'cert.none': '（无）',
+    'desk.open': '双击打开', 'info.closeTip': '关闭提示',
+    'cert.localProxy': '本机代理（明文 http），没有证书',
+  },
+  en: {
+    'lang.name': 'English',
+    'win.newtab': 'New Tab', 'win.about': 'About Google Chrome',
+    'win.options': 'Google Chrome Options', 'win.close': 'Close',
+    'win.min': 'Minimize', 'win.max': 'Maximize', 'win.restore': 'Restore Down',
+    'win.title': 'New Tab - Google Chrome', 'win.exit': 'Windows XP',
+    'win.newWindow': 'New Window',
+    'tab.new': 'New Tab', 'tab.reload': 'Reload', 'tab.dup': 'Duplicate',
+    'tab.close': 'Close Tab', 'tab.closeOthers': 'Close Other Tabs',
+    'tab.closeTip': 'Close tab', 'tab.newTip': 'New tab',
+    'nav.back': 'Back', 'nav.fwd': 'Forward', 'nav.reload': 'Reload this page',
+    'nav.stop': 'Stop loading this page', 'nav.go': 'Go',
+    'nav.addBm': 'Bookmark this page', 'nav.editBm': 'Edit bookmark',
+    'nav.secure': 'Secure connection', 'nav.addr': 'Address and search bar',
+    'nav.pageMenu': 'Control the current page', 'nav.mainMenu': 'Customize and control Google Chrome',
+    'nav.openSys': 'Open this page in your system browser',
+    'nav.zoomIn': 'Zoom in', 'nav.zoomOut': 'Zoom out',
+    'nav.zoomReset': 'Actual size (currently {0}%)',
+    'menu.showBar': 'Always show bookmarks bar', 'menu.newWindow': 'New Window',
+    'menu.history': 'History', 'menu.clearData': 'Clear browsing data…',
+    'menu.options': 'Options', 'menu.about': 'About Google Chrome',
+    'menu.exit': 'Exit', 'menu.startAbout': 'About this replica', 'menu.startLabel': 'Start',
+    'menu.reload': 'Reload',
+    'bm.other': 'Other Bookmarks', 'bm.emptyBar': 'For quick access, place your bookmarks here on the bookmarks bar.',
+    'bm.empty': '(empty)', 'bm.open': 'Open', 'bm.openNew': 'Open in new tab',
+    'bm.openNewWin': 'Open in new window',
+    'bm.delete': 'Delete', 'bm.added': 'Bookmark added!', 'bm.edit': 'Edit bookmark', 'bm.name': 'Name:',
+    'ntp.most': 'Most Visited', 'ntp.searchIn': 'Search {0}', 'ntp.search': 'Search',
+    'ntp.recentBm': 'Recent Bookmarks', 'ntp.recentBmEmpty': 'Click the star in the address bar to add bookmarks.',
+    'ntp.recentClosed': 'Recently Closed', 'ntp.recentClosedEmpty': 'Nothing yet.',
+    'ntp.fullHistory': 'Show full history »',
+    'hist.title': 'History', 'hist.search': 'Search history', 'hist.clear': 'Clear browsing data…',
+    'hist.none': 'No matching history entries.', 'hist.empty': 'No history yet. Go browse something.',
+    'dlg.clear': 'Clear Browsing Data', 'dlg.clearIntro': 'Clear the following items:',
+    'dlg.clearHist': 'Browsing history and recently closed tabs', 'dlg.clearBm': 'All bookmarks',
+    'dlg.engine': 'Default search engine:', 'dlg.alwaysBar': 'Always show the bookmarks bar',
+    'dlg.lang': 'Language:', 'dlg.langNote': 'The UI reloads after changing the language, closing open tabs',
+    'dlg.historyGroup': 'History',
+    'dlg.clearLocal': 'Clear local history', 'dlg.clearLocalConfirm': 'Confirm clear',
+    'dlg.clearLocalCount': 'History entries saved on this computer: {0}', 'dlg.clearLocalWarn': 'Entries to delete: {0}, plus recently closed tabs. This cannot be undone. Click again to confirm.',
+    'dlg.clearLocalDone': 'Cleared. Bookmarks and settings were kept.', 'dlg.clearLocalEmpty': 'No history to clear',
+    'dlg.ok': 'OK', 'dlg.cancel': 'Cancel',
+    'about.version': '1.0.154.36 (nostalgia replica)',
+    'about.proxyOn': 'Pages load through the local proxy, so most sites open normally.',
+    'about.proxyOff': 'The local proxy is not connected; only sites that allow embedding will open.',
+    'about.note': 'A purely front-end nostalgia replica, for fun only, not affiliated with Google.',
+    'engine.note.bing': 'may return no results',
+    'site.wikipedia': 'Wikipedia', 'site.google2008': 'Google in 2008',
+    'site.portal': 'BBC', 'site.search': 'DuckDuckGo', 'site.archive': 'Internet Archive',
+    'engine.ddg': 'DuckDuckGo', 'engine.google': 'Google', 'engine.baidu': 'Baidu', 'engine.bing': 'Bing',
+    'google.hint': 'Google opens directly (not proxied). Result sites may refuse to display; Cmd/Ctrl-click opens a new browser tab',
+    'info.offline': 'Not connected to the local proxy, so many sites will refuse to display. Run ',
+    'info.offline2': ' in the chrome-xp folder, then open ',
+    'frame.web': 'Page content',
+    'search.loading': 'Waiting for {0}…',
+    'sg.search': '- Search {0}',
+    // 证书 / Certificate
+    'cert.title': 'Certificate', 'cert.connTitle': 'Secure connection',
+    'cert.identity': 'You are connected to',
+    'cert.certBy': 'with a certificate issued by', 'cert.expires': 'Valid',
+    'cert.viewInfo': 'Certificate information »', 'cert.loading': 'Reading certificate…',
+    'cert.err': 'Unable to read the certificate ({0})',
+    'cert.tab.general': 'General', 'cert.tab.detail': 'Details',
+    'cert.issuedTo': 'Issued to', 'cert.issuedBy': 'Issued by', 'cert.validity': 'Valid from',
+    'cert.subject': 'Subject', 'cert.issuer': 'Issuer',
+    'cert.serial': 'Serial number', 'cert.fingerprint': 'SHA-256 fingerprint',
+    'cert.san': 'Subject alternative names', 'cert.from': 'Valid from', 'cert.to': 'Valid to',
+    'cert.proto': 'Protocol', 'cert.cipher': 'Cipher suite', 'cert.bits': 'Key size',
+    'cert.none': '(none)',
+    'desk.open': 'Double-click to open', 'info.closeTip': 'Dismiss this message',
+    'cert.localProxy': 'Local proxy (plain http): no certificate',
+  },
+};
+
+const lang = {
+  get current() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('cx.lang')); } catch (e) { /* 隐私模式 / private mode */ }
+    if (saved === 'zh' || saved === 'en') return saved;
+    // 默认跟随浏览器语言：中文 -> zh，其他一律 en / Default follows the browser: zh for Chinese, en otherwise
+    return /^zh/i.test(navigator.language || '') ? 'zh' : 'en';
+  },
+  set(code) {
+    try { localStorage.setItem('cx.lang', JSON.stringify(code)); } catch (e) { /* 隐私模式 / private mode */ }
+    location.reload();
+  },
+  // 把界面语言写进 chrome.localhost 域的 Cookie，代理借它决定向网站要哪种语言（只给代理看，不会发给网站）
+  // Store the UI language in a chrome.localhost cookie; the proxy uses it to ask sites for that language
+  // (the proxy reads it and never forwards it to sites)
+  syncToProxy() {
+    if (location.hostname !== 'chrome.localhost') return;
+    // 界面自己只用 cx_lang。chrome.localhost 上能看到的其他 Cookie 都是旧版本时网页脚本漏上来的
+    // （会被发给所有网站），顺手清掉；现在桥接脚本已经拦住了这种写法。
+    // The UI only uses cx_lang. Any other cookie visible on chrome.localhost leaked from page scripts in older
+    // versions (and would be sent to every site), so clear it; the bridge now blocks such writes.
+    for (const pair of document.cookie.split(';')) {
+      const name = pair.split('=')[0].trim();
+      if (!name || name === 'cx_lang') continue;
+      document.cookie = `${name}=; Domain=chrome.localhost; Path=/; Max-Age=0`;
+      document.cookie = `${name}=; Path=/; Max-Age=0`;
+    }
+    document.cookie = `cx_lang=${this.current}; Domain=chrome.localhost; Path=/; Max-Age=31536000; SameSite=Lax`;
+  },
+};
+
+function t(key, ...args) {
+  const table = MESSAGES[lang.current] || MESSAGES.zh;
+  let s = table[key];
+  if (s === undefined) s = MESSAGES.zh[key];
+  if (s === undefined) return key;
+  return s.replace(/\{(\d)\}/g, (m, i) => (args[+i] === undefined ? m : String(args[+i])));
+}
+
+// ============================================================ 小工具 / Helpers
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+function el(tag, props, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    // dataset 只有 getter，直接赋值在严格模式下会抛错，要逐项写入
+    // dataset is getter-only; assigning it throws in strict mode, so copy the entries instead
+    else if (k === 'dataset') Object.assign(n.dataset, v);
+    else if (k in n) n[k] = v;
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) n.append(c);
+  return n;
+}
+
+function svgIcon(id, size) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const s = document.createElementNS(NS, 'svg');
+  if (size) { s.setAttribute('width', size); s.setAttribute('height', size); }
+  const u = document.createElementNS(NS, 'use');
+  u.setAttribute('href', '#' + id);
+  s.append(u);
+  return s;
+}
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function anim(node, frames, opts) {
+  const o = Object.assign({ duration: 180, easing: 'cubic-bezier(.2, .7, .3, 1)' }, opts);
+  if (reduceMotion.matches) o.duration = 0;
+  const a = node.animate(frames, o);
+  // 后台页面可能不出帧：到点直接收尾，别让后续动作被卡住
+  // Background pages may render no frames: finish on time so follow-up actions are not blocked
+  setTimeout(() => { if (a.playState === 'running' || a.playState === 'paused') a.finish(); }, o.duration + 250);
+  return a;
+}
+function animateOut(node, ms = 110) {
+  node.classList.add('out');
+  setTimeout(() => node.remove(), reduceMotion.matches ? 0 : ms);
+}
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('cx.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('cx.' + k, JSON.stringify(v)); } catch { /* 隐私模式 / private mode */ } },
+};
+const asArray = (v) => (Array.isArray(v) ? v.filter((x) => x && typeof x.url === 'string') : []);
+
+// ============================================================ 状态 / State
+const NTP = 'chrome://newtab/';
+const HIST = 'chrome://history/';
+const ENGINES = {
+  ddg: { nameKey: 'engine.ddg', url: 'https://html.duckduckgo.com/html/?q=' },
+  google: { nameKey: 'engine.google', url: 'https://www.google.com/search?q=' },   // 直接嵌入，见 isDirect / embedded directly, see isDirect
+  baidu: { nameKey: 'engine.baidu', url: 'https://www.baidu.com/s?wd=' },
+  bing: { nameKey: 'engine.bing', url: 'https://www.bing.com/search?q=', noteKey: 'engine.note.bing' },
+};
+const engineName = (k) => (ENGINES[k] ? t(ENGINES[k].nameKey) : k);
+const engineNote = (k) => (ENGINES[k] && ENGINES[k].noteKey ? t(ENGINES[k].noteKey) : '');
+
+// 新标签页的默认快捷方式：一律用纯域名，不带参数。英文界面下代理会向网站要英文版（见 server.js 的 cx_lang），
+// 所以 MDN 这类按语言自动跳转的网站，纯域名也会打开英文版。必应例外：它按地区把人跳到中文的国内版，
+// 语言设置管不住，所以英文界面下这个位置换成 DuckDuckGo；百度没有英文版，换成 BBC。
+// match 认出历史记录里同一网站的各语言版本（含跳转后的落地页），合成一个磁贴并换成当前语言的网址。
+// Default New Tab shortcuts: plain domains only, no parameters. With an English UI the proxy asks sites for English
+// (see cx_lang in server.js), so sites that redirect by language, like MDN, open in English from the bare domain.
+// Bing is the exception: it redirects by region to its Chinese domestic edition regardless of language, so in English
+// that slot becomes DuckDuckGo; Baidu has no English edition and becomes BBC.
+// `match` recognises any language variant of a site in history (including landing pages after redirects), merging
+// them into one tile that uses the current language's URL.
+const DEFAULT_SITES = [
+  { id: 'wikipedia', titleKey: 'site.wikipedia',
+    urls: { zh: 'https://zh.wikipedia.org/', en: 'https://en.wikipedia.org/' },
+    match: /^https:\/\/(?:zh\.wikipedia\.org\/(?:(?:wiki|zh(?:-\w+)?)\/Wikipedia:%E9%A6%96%E9%A1%B5)?|en\.wikipedia\.org\/(?:wiki\/Main_Page)?)$/ },
+  // 这是互联网档案馆里 2008 年的谷歌首页，路径必须保留 / Google's 2008 homepage in the Wayback Machine; the path is required
+  { id: 'google2008', titleKey: 'site.google2008',
+    urls: { zh: 'https://web.archive.org/web/2008/http://www.google.com/' } },
+  { id: 'portal', titleKey: 'site.portal',   // 中文：百度；英文：BBC / zh: Baidu, en: BBC
+    urls: { zh: 'https://www.baidu.com/', en: 'https://www.bbc.com/' },
+    match: /^https:\/\/(?:www\.baidu\.com\/|www\.bbc\.com\/(?:news\/?)?)$/ },   // 含上一版的 /news / includes the previous /news URL
+  { id: 'search', titleKey: 'site.search',   // 中文：必应；英文：DuckDuckGo / zh: Bing, en: DuckDuckGo
+    urls: { zh: 'https://www.bing.com/', en: 'https://duckduckgo.com/' },
+    match: /^https:\/\/(?:(?:www|cn|global)\.bing\.com\/(?:\?[^#]*)?|duckduckgo\.com\/)$/ },
+  { id: 'hn', title: 'Hacker News', urls: { zh: 'https://news.ycombinator.com/' } },
+  { id: 'archive', titleKey: 'site.archive', urls: { zh: 'https://web.archive.org/' } },
+  { id: 'mdn', title: 'MDN Web Docs', urls: { zh: 'https://developer.mozilla.org/' },
+    match: /^https:\/\/developer\.mozilla\.org\/(?:(?:zh-CN|en-US)\/)?$/ },
+  { id: 'github', title: 'GitHub', urls: { zh: 'https://github.com/' } },
+  { id: 'example', title: 'Example Domain', urls: { zh: 'https://example.com/' } },
+];
+// 当前语言的网址；没有英文版的网站本身就是英文 / URL for the current language; sites without an en URL are English already
+const shortcutUrl = (s) => s.urls[lang.current] || s.urls.zh;
+// 这个网址是不是某个默认快捷方式（任一语言版本）/ Is this URL a default shortcut (any language variant)?
+function shortcutOf(url) {
+  return DEFAULT_SITES.find((s) => (s.match ? s.match.test(url) : Object.values(s.urls).includes(url))) || null;
+}
+const siteName = (x) => (x.site ? siteName(x.site)
+  : x.titleKey ? t(x.titleKey) : (x.title || hostOf(x.url)));
+
+const state = {
+  bookmarks: asArray(store.get('bookmarks', [])),
+  history: asArray(store.get('history', [])),
+  settings: Object.assign({ bookbar: false, engine: 'ddg' }, store.get('settings', {})),
+  closed: [],
+};
+if (!ENGINES[state.settings.engine]) state.settings.engine = 'ddg';
+
+let tabSeq = 0;
+let winSeq = 0;
+let proxyOn = false;
+// 服务端为这份界面页现发的令牌，代理只服务自己发出的界面；见 server.js 的 serveUi / hasUiToken
+// The token the server minted for this very UI page; see serveUi / hasUiToken in server.js
+let UI_TOKEN = '';
+
+const saveTimers = {};
+function save(key) {
+  clearTimeout(saveTimers[key]);
+  saveTimers[key] = setTimeout(() => store.set(key, state[key]), 200);
+}
+
+// ============================================================ 地址 / Addresses
+const PORT = location.port ? ':' + location.port : '';
+const isInternal = (u) => u.startsWith('chrome://');
+const isWeb = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
+const hostOf = (u) => { try { return new URL(u).host; } catch { return u; } };
+
+function proxify(u0) {
+  const u = new URL(u0);
+  return `http://${u.hostname}${u.port ? '.p' + u.port : ''}.${u.protocol.slice(0, -1)}.chrome.localhost${PORT}` +
+    u.pathname + u.search + u.hash;
+}
+// 谷歌搜索没法走代理：谷歌会把代理的请求判成异常流量，跳到验证页，而验证码不支持 *.chrome.localhost，
+// 永远过不去。好在谷歌允许带 igu=1 时被嵌入页面，于是谷歌首页和搜索页直接嵌入，由浏览器自己访问。
+// 代价：没有桥接脚本，标签页不知道谷歌里的地址和标题变化；从结果点进去的网站同样不经代理，
+// 禁止被嵌入的网站会拒绝显示（按住 Cmd/Ctrl 点击可在浏览器新标签页打开）。
+// Google search cannot go through the proxy: Google flags proxied requests as unusual traffic and shows a CAPTCHA
+// page whose reCAPTCHA does not support *.chrome.localhost, so it can never be passed. Google does allow embedding
+// with igu=1, so its homepage and search pages are embedded directly and loaded by the browser itself.
+// Trade-off: there is no bridge, so the tab does not see URL or title changes inside Google; sites opened from the
+// results are not proxied either, so those that forbid embedding refuse to display (Cmd/Ctrl-click opens a new
+// browser tab instead).
+const GOOGLE_SEARCH = /^https?:\/\/(?:www\.)?google\.(?:com|com?\.[a-z]{2}|[a-z]{2})\/(?:search|webhp)?(?:[?#]|$)/i;
+const isDirect = (u) => GOOGLE_SEARCH.test(u);
+function directUrl(u) {
+  const x = new URL(u);
+  x.protocol = 'https:';
+  if (!x.searchParams.has('igu')) x.searchParams.set('igu', '1');
+  return x.href;
+}
+
+function isProxyOrigin(origin) {
+  try { return new URL(origin).hostname.endsWith('.chrome.localhost'); } catch { return false; }
+}
+function iconFor(u) {
+  try {
+    const x = new URL(u);
+    if (!/^https?:$/.test(x.protocol)) return '';
+    return proxyOn ? proxify(x.origin + '/favicon.ico') : x.origin + '/favicon.ico';
+  } catch { return ''; }
+}
+function safeIcon(src) {
+  return typeof src === 'string' && src.length < 3000 && /^(https?:|data:image\/)/i.test(src) ? src : '';
+}
+
+const URL_LIKE = /^([a-z0-9\u00a1-\uffff-]+\.)+[a-z\u00a1-\uffff]{2,}(:\d+)?([/?#].*)?$/i;
+const IP_LIKE = /^\d{1,3}(\.\d{1,3}){3}(:\d+)?([/?#].*)?$/;
+function looksLikeUrl(text) {
+  const s = text.trim();
+  return /^(https?|chrome):\/\//i.test(s) || (!/\s/.test(s) && (URL_LIKE.test(s) || IP_LIKE.test(s)));
+}
+function resolveInput(text) {
+  const s = text.trim();
+  if (!s) return null;
+  if (/^chrome:\/\/newtab\/?$/i.test(s)) return NTP;
+  if (/^chrome:\/\/history\/?$/i.test(s)) return HIST;
+  if (/^https?:\/\//i.test(s)) { try { return new URL(s).href; } catch { /* 当作搜索 / treat as a search */ } }
+  else if (looksLikeUrl(s) && !/^chrome:/i.test(s)) { try { return new URL('http://' + s).href; } catch { /* 当作搜索 / treat as a search */ } }
+  return ENGINES[state.settings.engine].url + encodeURIComponent(s);
+}
+
+// ============================================================ 图标 / Icons
+function favNode(src) {
+  const s = el('span', { className: 'fav' });
+  if (src) {
+    const img = new Image();
+    img.referrerPolicy = 'no-referrer';
+    img.alt = '';
+    img.onload = () => s.classList.add('has');
+    img.onerror = () => img.remove();
+    img.src = src;
+    s.append(img);
+  }
+  return s;
+}
+
+// ============================================================ 历史 / 书签数据 · History & bookmark data
+function addHistory(url) {
+  const h = state.history;
+  if (h.length && h[h.length - 1].url === url) return;
+  h.push({ url, title: '', icon: '', t: Date.now() });
+  if (h.length > 500) h.splice(0, h.length - 500);
+  save('history');
+}
+function updateHistoryMeta(url, title, icon) {
+  const h = state.history;
+  for (let i = h.length - 1; i >= 0 && i >= h.length - 30; i--) {
+    if (h[i].url === url) { h[i].title = title; h[i].icon = icon; save('history'); return; }
+  }
+}
+function mostVisited() {
+  const m = new Map();
+  for (const h of state.history) {
+    // 默认快捷方式的各语言版本合并成一个磁贴，网址和名称跟随当前语言
+    // Language variants of a default shortcut merge into one tile whose URL and name follow the current language
+    const site = shortcutOf(h.url);
+    const key = site ? 'site:' + site.id : h.url;
+    const r = m.get(key) || (site ? { url: shortcutUrl(site), site, icon: '', n: 0 } : { url: h.url, title: '', icon: '', n: 0 });
+    r.n++;
+    if (!site) {
+      if (h.title) r.title = h.title;
+      if (h.icon) r.icon = h.icon;
+    }
+    m.set(key, r);
+  }
+  const top = [...m.values()].sort((a, b) => b.n - a.n).slice(0, 9);
+  for (const d of DEFAULT_SITES) {
+    if (top.length >= 9) break;
+    if (!top.some((x) => x.site === d || x.url === shortcutUrl(d))) top.push({ url: shortcutUrl(d), site: d });
+  }
+  return top;
+}
+const findBookmark = (u) => state.bookmarks.find((b) => b.url === u);
+
+// ============================================================ 窗口管理（多窗口）/ Window management
+// 每个窗口 = 一份独立的标签页列表 + 自己的 DOM。全局数组 windows 记录所有窗口，
+// focusedWindow 指向当前操作的窗口。所有“当前窗口”的查询都从 focusedWindow 出发。
+// Each window = its own tab list + its own DOM. `windows` holds all of them and `focusedWindow`
+// points at the one being operated; every "current window" lookup starts from focusedWindow.
+const windows = [];
+let focusedWindow = null;
+const winTpl = $('#winTpl') || document.getElementById('winTpl');
+const tasksBar = document.getElementById('tasks');
+
+function createWindow(url = NTP) {
+  const root = winTpl.content.firstElementChild.cloneNode(true);
+  const w = {
+    id: ++winSeq,
+    root,
+    // 窗口内常用元素，创建时查一次 / Common elements of this window, looked up once at creation
+    q: {
+      strip: root.querySelector('.tabstrip'), views: root.querySelector('.views'),
+      newtabBtn: root.querySelector('.newtab'), wMin: root.querySelector('.wMin'),
+      wMax: root.querySelector('.wMax'), wClose: root.querySelector('.wClose'),
+      back: root.querySelector('.back'), fwd: root.querySelector('.fwd'),
+      reload: root.querySelector('.reload'), star: root.querySelector('.star'),
+      gobtn: root.querySelector('.gobtn'), field: root.querySelector('.field'),
+      url: root.querySelector('.url'), lock: root.querySelector('.lock'),
+      suggest: root.querySelector('.suggest'), pageMenu: root.querySelector('.pageMenu'),
+      wrenchMenu: root.querySelector('.wrenchMenu'), bookbar: root.querySelector('.bookbar'),
+      bookItems: root.querySelector('.bookbar .items'), otherBm: root.querySelector('.otherBm'),
+      infobar: root.querySelector('.infobar'), status: root.querySelector('.status'),
+      frame: root.querySelector('.frame'),
+    },
+    tabs: [], active: null, omniDirty: false,
+    geom: null, minimized: false, closing: false, winAnim: null,
+    sugItems: [], sugSel: -1,
+    // 任务栏按钮（一个窗口一格）/ Taskbar button (one per window)
+    taskBtn: el('button', { className: 'task' }, svgIcon('i-chrome'), el('span', { textContent: '' })),
+  };
+  windows.push(w);
+  document.body.append(root);
+  tasksBar.append(w.taskBtn);
+  bindWindow(w);
+  applyI18nWindow(w);
+  // 首个窗口默认最大化，后续窗口层叠打开（真 XP 就是这样开新窗口的）
+  // The first window starts maximized; later ones open cascaded, like new windows on real XP
+  if (winSeq > 1) {
+    root.classList.remove('max');
+    const cw = Math.min(innerWidth - 60, Math.max(460, Math.round(innerWidth * 0.7)));
+    const ch = Math.max(320, Math.round((innerHeight - 30) * 0.72));
+    w.geom = { x: Math.min(60 + (winSeq - 1) * 26, Math.max(10, innerWidth - cw - 10)),
+      y: Math.min(16 + (winSeq - 1) * 22, 60), w: cw, h: ch };
+    applyGeom(w);
+  }
+  focusWindow(w);
+  newTabIn(w, url);
+  if (winSeq > 1) anim(root, [{ opacity: 0, transform: 'scale(.92)' }, { opacity: 1, transform: 'none' }], { duration: 200 });
+  return w;
+}
+
+// 窗口叠放顺序：用 z-index 排序，绝不能把窗口节点重新插入 DOM——
+// iframe 一旦被移出文档就会整页重新加载，切一下窗口所有标签页都会刷新。
+// Window stacking uses z-index. Never re-insert a window node into the DOM: an iframe that leaves
+// the document reloads, so merely switching windows would refresh every tab in it.
+const zOrder = [];
+function raiseWindow(w) {
+  const i = zOrder.indexOf(w);
+  if (i >= 0) zOrder.splice(i, 1);
+  zOrder.push(w);
+  for (let k = zOrder.length - 1; k >= 0; k--) {
+    if (!zOrder[k].root.isConnected) zOrder.splice(k, 1);
+  }
+  zOrder.forEach((x, k) => { x.root.style.zIndex = String(10 + k); });   // 任务栏在 500 / taskbar sits at 500
+}
+
+function applyGeom(w) {
+  const root = w.root;
+  if (root.classList.contains('max')) {
+    // 只清几何属性，保留 z-index / Clear geometry only, keep z-index
+    for (const p of ['left', 'top', 'width', 'height']) root.style.removeProperty(p);
+    return;
+  }
+  if (!w.geom) {
+    const cw = Math.min(innerWidth - 40, Math.max(420, Math.round(innerWidth * 0.84)));
+    const ch = Math.max(300, Math.round((innerHeight - 30) * 0.86));
+    w.geom = { x: Math.round((innerWidth - cw) / 2), y: 22, w: cw, h: ch };
+  }
+  Object.assign(root.style, { left: w.geom.x + 'px', top: w.geom.y + 'px', width: w.geom.w + 'px', height: w.geom.h + 'px' });
+}
+
+function focusWindow(w) {
+  if (!w || w.closing) return;
+  focusedWindow = w;
+  for (const x of windows) {
+    x.root.classList.toggle('focused', x === w);
+    x.taskBtn.classList.toggle('on', x === w && !x.minimized);
+  }
+  raiseWindow(w);
+  closePopups();
+  paint(w);
+  const tab = w.active;
+  if (tab && cur(tab).url === NTP) w.q.url.focus();
+}
+
+function setMinimized(w, min) {
+  if (w.closing || min === w.minimized) return;
+  w.minimized = min;
+  closePopups();
+  w.taskBtn.classList.toggle('on', !min && w === focusedWindow);
+  if (w.winAnim) w.winAnim.cancel();
+  const AT = { transformOrigin: '0 0' };
+  const towardTask = () => {
+    const r = w.root.getBoundingClientRect(), b = w.taskBtn.getBoundingClientRect();
+    return `translate(${b.left - r.left}px, ${b.top - r.top}px) scale(${b.width / r.width}, ${b.height / r.height})`;
+  };
+  if (min) {
+    playWinAnim(w, [Object.assign({ transform: 'none', opacity: 1 }, AT), Object.assign({ transform: towardTask(), opacity: .15 }, AT)],
+      { duration: 250, easing: 'cubic-bezier(.4, 0, .9, .5)' }, () => w.root.classList.add('min'));
+  } else {
+    w.root.classList.remove('min');
+    playWinAnim(w, [Object.assign({ transform: towardTask(), opacity: .15 }, AT), Object.assign({ transform: 'none', opacity: 1 }, AT)],
+      { duration: 250 });
+    if (focusedWindow !== w) focusWindow(w); else paint(w);
+  }
+}
+
+function playWinAnim(w, frames, opts, done) {
+  if (w.winAnim) w.winAnim.cancel();
+  const a = w.winAnim = anim(w.root, frames, Object.assign({ fill: 'forwards' }, opts));
+  a.finished.then(() => {
+    if (w.winAnim === a) w.winAnim = null;
+    if (done) done();
+    a.cancel();
+  }, () => {});
+}
+
+function toggleMax(w) {
+  if (w.closing) return;
+  if (w.winAnim) w.winAnim.cancel();
+  const root = w.root;
+  const from = root.getBoundingClientRect();
+  root.classList.toggle('max');
+  applyGeom(w);
+  const to = root.getBoundingClientRect();
+  const AT = { transformOrigin: '0 0' };
+  playWinAnim(w, [Object.assign({ transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})` }, AT),
+    Object.assign({ transform: 'none' }, AT)], { duration: 230 });
+  paint(w);
+}
+
+function closeWindow(w) {
+  if (w.closing) return;
+  w.closing = true;
+  closePopups();
+  for (const tab of w.tabs) clearTimeout(tab.watch);
+  w.taskBtn.remove();
+  const done = () => {
+    w.root.remove();
+    const i = windows.indexOf(w);
+    if (i >= 0) windows.splice(i, 1);
+    const z = zOrder.indexOf(w);
+    if (z >= 0) zOrder.splice(z, 1);
+    if (focusedWindow === w) {
+      // 焦点交给叠放在最上面的窗口 / Hand focus to the topmost remaining window
+      focusedWindow = zOrder[zOrder.length - 1] || windows[windows.length - 1] || null;
+      if (focusedWindow) focusWindow(focusedWindow);
+      else document.title = t('win.exit');
+    }
+  };
+  if (w.minimized) return done();
+  playWinAnim(w, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.96)' }], { duration: 160, easing: 'ease-in' }, done);
+}
+
+// ---- 拖动 & 拉伸 / Drag & resize ----
+function bindWindow(w) {
+  const { q, root } = w;
+  root.addEventListener('mousedown', () => { if (focusedWindow !== w) focusWindow(w); }, true);
+
+  q.wMin.addEventListener('click', () => setMinimized(w, true));
+  q.wMax.addEventListener('click', () => toggleMax(w));
+  q.wClose.addEventListener('click', () => closeWindow(w));
+  q.frame.addEventListener('dblclick', (e) => { if (e.target === q.frame || e.target === q.strip) toggleMax(w); });
+  q.frame.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || root.classList.contains('max') || (e.target !== q.frame && e.target !== q.strip)) return;
+    const sx = e.clientX - w.geom.x, sy = e.clientY - w.geom.y;
+    document.body.classList.add('dragging');
+    const move = (ev) => {
+      w.geom.x = Math.min(innerWidth - 80, Math.max(80 - w.geom.w, ev.clientX - sx));
+      w.geom.y = Math.min(innerHeight - 70, Math.max(0, ev.clientY - sy));
+      applyGeom(w);
+    };
+    const up = () => {
+      document.body.classList.remove('dragging');
+      removeEventListener('mousemove', move);
+      removeEventListener('mouseup', up);
+    };
+    addEventListener('mousemove', move);
+    addEventListener('mouseup', up);
+  });
+  w.taskBtn.addEventListener('click', () => {
+    if (w.minimized) setMinimized(w, false);
+    else if (focusedWindow === w) setMinimized(w, true);
+    else focusWindow(w);
+  });
+
+  // 8 向拉伸：热区带方向类名，按下时记录初始几何，按 delta 改 w/h
+  // 8-way resize: each handle's class names its direction; record the start geometry and apply deltas
+  for (const hz of root.querySelectorAll('.rz')) {
+    hz.addEventListener('mousedown', (e) => {
+      if (e.button !== 0 || root.classList.contains('max')) return;
+      e.preventDefault();
+      const dir = hz.className.replace('rz', '').trim();
+      const g = Object.assign({}, w.geom);
+      const sx = e.clientX, sy = e.clientY;
+      document.body.classList.add('dragging');
+      const move = (ev) => {
+        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        if (dir.includes('e')) w.geom.w = Math.max(420, g.w + dx);
+        if (dir.includes('s')) w.geom.h = Math.max(280, g.h + dy);
+        if (dir.includes('w')) { const nw = Math.max(420, g.w - dx); w.geom.x = g.x + (g.w - nw); w.geom.w = nw; }
+        if (dir.includes('n')) { const nh = Math.max(280, g.h - dy); w.geom.y = Math.max(0, g.y + (g.h - nh)); w.geom.h = nh; }
+        applyGeom(w);
+      };
+      const up = () => {
+        document.body.classList.remove('dragging');
+        removeEventListener('mousemove', move);
+        removeEventListener('mouseup', up);
+      };
+      addEventListener('mousemove', move);
+      addEventListener('mouseup', up);
+    });
+  }
+
+  // ---- 工具栏 / Toolbar ----
+  const nudge = (btn, dx) => anim(btn.querySelector('.ic'),
+    [{ transform: 'translateX(0)' }, { transform: `translateX(${dx}px)` }, { transform: 'translateX(0)' }], { duration: 200 });
+  q.back.addEventListener('click', (e) => {
+    const tab = w.active;
+    if (!tab || tab.idx <= 0) return;
+    nudge(e.currentTarget, -4);
+    tab.idx--; w.omniDirty = false; load(tab);
+  });
+  q.fwd.addEventListener('click', (e) => {
+    const tab = w.active;
+    if (!tab || tab.idx >= tab.entries.length - 1) return;
+    nudge(e.currentTarget, 4);
+    tab.idx++; w.omniDirty = false; load(tab);
+  });
+  q.reload.addEventListener('click', (e) => {
+    if (!w.active) return;
+    anim(e.currentTarget.querySelector('.ic'), [{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], { duration: 480, easing: 'ease-out' });
+    w.omniDirty = false; load(w.active);
+  });
+  q.newtabBtn.addEventListener('click', () => newTabIn(w));
+  q.gobtn.addEventListener('click', () => {
+    const tab = w.active;
+    if (tab && tab.loading && !w.omniDirty) {
+      window.stop();
+      tab.loading = false;
+      clearTimeout(tab.watch);
+      paint(w);
+    } else submitOmni(w);
+  });
+  q.star.addEventListener('click', () => starClicked(w));
+  q.lock.addEventListener('click', () => lockClicked(w));
+
+  // ---- 地址栏 / Address bar ----
+  // 聚焦编辑时才加黄底（editing），失焦立刻恢复白底 / Yellow (editing) only while focused; blur restores white
+  q.url.addEventListener('focus', () => {
+    q.field.classList.add('editing');
+    setTimeout(() => q.url.select(), 0);
+  });
+  q.url.addEventListener('blur', () => {
+    q.field.classList.remove('editing');
+    setTimeout(() => hideSuggest(w), 120);
+  });
+  q.url.addEventListener('input', () => { w.omniDirty = true; showSuggest(w); paint(w); });
+  q.url.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); submitOmni(w, w.sugSel >= 0 && w.sugItems[w.sugSel] ? w.sugItems[w.sugSel].url : null); }
+    else if (e.key === 'Escape') { w.omniDirty = false; hideSuggest(w); paint(w); q.url.select(); }
+    else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && w.sugItems.length) {
+      e.preventDefault();
+      const n = w.sugItems.length;
+      selectSuggest(w, e.key === 'ArrowDown' ? (w.sugSel + 1) % n : (w.sugSel - 1 + n) % n, true);
+    }
+  });
+
+  // ---- 菜单 / Menus ----
+  q.pageMenu.addEventListener('click', (e) => {
+    if (e.currentTarget.classList.contains('open')) return closePopups();
+    const tab = w.active;
+    const url = tab ? cur(tab).url : NTP;
+    const web = !isInternal(url);
+    showMenu(w, e.currentTarget, [
+      { label: t('tab.new'), action: () => newTabIn(w) },
+      { label: t('win.newWindow'), action: () => createWindow(NTP) },
+      { label: t('nav.openSys'), disabled: !web, action: () => window.open(url, '_blank', 'noopener') },
+      '-',
+      { label: t('nav.zoomIn'), disabled: !web, action: () => setZoom(w, 0.1) },
+      { label: t('nav.zoomReset', Math.round((tab ? tab.zoom : 1) * 100)), disabled: !web, action: () => setZoom(w, 0) },
+      { label: t('nav.zoomOut'), disabled: !web, action: () => setZoom(w, -0.1) },
+      '-',
+      { label: t('menu.reload'), action: () => w.active && load(w.active) },
+    ], { alignRight: true });
+  });
+  q.wrenchMenu.addEventListener('click', (e) => {
+    if (e.currentTarget.classList.contains('open')) return closePopups();
+    showMenu(w, e.currentTarget, [
+      { label: t('menu.newWindow'), action: () => createWindow(NTP) },
+      { label: t('menu.showBar'), checked: state.settings.bookbar,
+        action: () => { state.settings.bookbar = !state.settings.bookbar; save('settings'); slideBookbar(w); paint(w); } },
+      '-',
+      { label: t('menu.history'), action: () => newTabIn(w, HIST) },
+      { label: t('menu.clearData'), action: clearDataDialog },
+      '-',
+      { label: t('menu.options'), action: optionsDialog },
+      { label: t('menu.about'), action: aboutDialog },
+      '-',
+      { label: t('menu.exit'), action: () => closeWindow(w) },
+    ], { alignRight: true });
+  });
+  q.otherBm.addEventListener('click', (e) => {
+    if (e.currentTarget.classList.contains('open')) return closePopups();
+    showMenu(w, e.currentTarget, state.bookmarks.length
+      ? state.bookmarks.map((b) => ({ label: b.title, icon: b.icon || iconFor(b.url), action: () => go(w.active, b.url) }))
+      : [{ label: t('bm.empty'), disabled: true }], { alignRight: true });
+  });
+
+  // ---- 信息栏 / Info bar ----
+  q.infobar.querySelector('button').addEventListener('click', () => { q.infobar.hidden = true; });
+}
+
+function setZoom(w, delta) {
+  const tab = w.active;
+  if (!tab) return;
+  tab.zoom = delta === 0 ? 1 : Math.min(2, Math.max(0.5, Math.round((tab.zoom + delta) * 10) / 10));
+  applyZoom(tab);
+}
+
+// ============================================================ 标签页（每窗口独立）/ Tabs (per window)
+const CAP = (side) => `<svg class="cap ${side}" viewBox="0 0 16 26" preserveAspectRatio="none" aria-hidden="true">` +
+  '<path class="f" d="M0 26C4 26 5.600 23 7 19L11.400 5.600C12.600 2 13.800 .500 16 .500V26z"/>' +
+  '<path class="s" d="M0 25.500C4 25.500 5.600 23 7 19L11.400 5.600C12.600 2 13.800 .500 16 .500"/></svg>';
+
+const cur = (tab) => tab.entries[tab.idx];
+
+function windowOfTab(tab) {
+  return windows.find((w) => w.tabs.includes(tab)) || null;
+}
+
+function buildTabEl(tab, w) {
+  const tabEl = el('div', { className: 'tab', tabIndex: 0 });
+  tabEl.setAttribute('role', 'tab');
+  tabEl.innerHTML = CAP('l') + '<div class="mid"><span class="slot"></span><span class="ttl"></span>' +
+    '<button class="x" title="' + t('tab.closeTip') + '" aria-label="' + t('tab.closeTip') + '" tabindex="-1">' +
+    '<svg viewBox="0 0 8 8"><path d="M1 1l6 6M7 1l-6 6"/></svg></button></div>' + CAP('r');
+  tabEl.addEventListener('mousedown', (e) => { if (e.button === 0 && !e.target.closest('.x')) activateTab(tab); });
+  tabEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activateTab(tab); } });
+  tabEl.querySelector('.x').addEventListener('click', (e) => { e.stopPropagation(); closeTab(tab); });
+  tabEl.addEventListener('auxclick', (e) => { if (e.button === 1) { e.preventDefault(); closeTab(tab); } });
+  tabEl.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    showMenu(w, { x: e.clientX, y: e.clientY }, [
+      { label: t('tab.new'), action: () => newTabIn(w) },
+      { label: t('win.newWindow'), action: () => createWindow(NTP) },
+      '-',
+      { label: t('tab.reload'), action: () => load(tab) },
+      { label: t('tab.dup'), action: () => newTabIn(w, cur(tab).url, { opener: tab }) },
+      { label: t('bm.openNewWin'), disabled: isInternal(cur(tab).url), action: () => createWindow(cur(tab).url) },
+      '-',
+      { label: t('tab.close'), action: () => closeTab(tab) },
+      { label: t('tab.closeOthers'), disabled: w.tabs.length < 2, action: () => w.tabs.filter((x) => x !== tab).forEach(closeTab) },
+    ]);
+  });
+  return tabEl;
+}
+
+function slideTab(node, opening) {
+  const w = node.offsetWidth + 'px';
+  const first = !node.previousElementSibling;
+  const gone = Object.assign({ maxWidth: '0px', minWidth: '0px', opacity: opening ? 0.4 : 0 },
+    first ? { marginRight: '9px' } : { marginLeft: '0px' });
+  const full = Object.assign({ maxWidth: w, minWidth: '0px', opacity: 1 },
+    first ? { marginRight: '0px' } : { marginLeft: '-9px' });
+  node.classList.add('sliding');
+  const a = opening
+    ? anim(node, [gone, full], { duration: 200 })
+    : anim(node, [full, gone], { duration: 160, easing: 'ease-in', fill: 'forwards' });
+  return a.finished.then(() => node.classList.remove('sliding'), () => {});
+}
+
+function newTabIn(w, url = NTP, { opener = null, background = false } = {}) {
+  const tab = { id: ++tabSeq, entries: [], idx: -1, title: '', icon: '', loading: false, waiting: false, expect: false,
+    hover: '', zoom: 1, frame: null, watch: 0 };
+  tab.view = el('div', { className: 'view' });
+  tab.el = buildTabEl(tab, w);
+  const at = opener && w.tabs.includes(opener) ? w.tabs.indexOf(opener) + 1 : w.tabs.length;
+  w.tabs.splice(at, 0, tab);
+  w.q.strip.insertBefore(tab.el, at + 1 < w.tabs.length ? w.tabs[at + 1].el : w.q.newtabBtn);
+  w.q.views.append(tab.view);
+  go(tab, url);
+  if (background && w.active) paint(w); else activateTab(tab);
+  if (w.tabs.length > 1) slideTab(tab.el, true);
+  return tab;
+}
+
+function activateTab(tab) {
+  const w = windowOfTab(tab);
+  if (!w) return;
+  if (w.active !== tab) w.omniDirty = false;
+  w.active = tab;
+  closePopups();
+  if (isInternal(cur(tab).url)) renderInternal(tab);
+  paint(w);
+  if (focusedWindow !== w) focusWindow(w);
+  if (cur(tab).url === NTP) w.q.url.focus();
+}
+
+function closeTab(tab) {
+  const w = windowOfTab(tab);
+  if (!w) return;
+  const i = w.tabs.indexOf(tab);
+  if (i < 0) return;
+  const c = cur(tab);
+  if (!isInternal(c.url)) {
+    state.closed.unshift({ url: c.url, title: tab.title, icon: tab.icon });
+    state.closed.splice(10);
+  }
+  clearTimeout(tab.watch);
+  w.tabs.splice(i, 1);
+  if (!w.tabs.length) { w.active = null; closeWindow(w); return; }   // 最后一个标签关掉，窗口也关 / closing the last tab closes the window
+  tab.view.remove();
+  tab.el.classList.remove('active');
+  tab.el.style.pointerEvents = 'none';
+  slideTab(tab.el, false).then(() => tab.el.remove());
+  if (w.active === tab) activateTab(w.tabs[Math.min(i, w.tabs.length - 1)]); else paint(w);
+}
+
+function go(tab, url) {
+  tab.entries.splice(tab.idx + 1);
+  tab.entries.push({ url, title: '' });
+  tab.idx = tab.entries.length - 1;
+  load(tab);
+}
+
+function load(tab) {
+  const w = windowOfTab(tab);
+  const c = cur(tab);
+  tab.hover = '';
+  clearTimeout(tab.watch);
+  if (isInternal(c.url)) {
+    tab.frame = null;
+    tab.loading = false;
+    tab.expect = false;
+    tab.icon = '';
+    renderInternal(tab);
+  } else {
+    // 谷歌搜索不走代理，直接嵌入（见 isDirect）/ Google search bypasses the proxy and is embedded directly (see isDirect)
+    const direct = proxyOn && isDirect(c.url);
+    let f = tab.frame;
+    if (!f) {
+      f = tab.frame = el('iframe', { className: 'web', title: t('frame.web') });
+      f.setAttribute('allow', 'fullscreen; autoplay; clipboard-write');
+      f.addEventListener('load', () => {
+        if (tab.frame !== f) return;
+        tab.loading = false;
+        tab.expect = false;
+        clearTimeout(tab.watch);
+        paint(windowOfTab(tab));
+      });
+    }
+    // 沙箱每次加载前重设（只对下一次导航生效）。经代理的网页不给弹窗权限，新窗口由桥接脚本转成标签页；
+    // 不经代理的网页（谷歌、无代理模式）没有桥接脚本，只能允许它弹到浏览器的新标签页
+    // The sandbox is reset before every load (it applies to the next navigation). Proxied pages get no popups;
+    // the bridge turns new windows into tabs. Unproxied pages (Google, no-proxy mode) have no bridge, so they may
+    // open popups as new browser tabs
+    f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-pointer-lock' +
+      (!proxyOn || direct ? ' allow-popups allow-popups-to-escape-sandbox' : ''));
+    tab.direct = direct;
+    // 谷歌的提示只在打开后显示几秒，不一直盖着网页 / Show the Google hint for a few seconds only
+    if (direct) {
+      tab.hintUntil = Date.now() + 9000;
+      setTimeout(() => paint(windowOfTab(tab)), 9100);
+    }
+    tab.loading = true;
+    tab.waiting = proxyOn && !direct;
+    tab.expect = true;
+    tab.title = c.title || (direct ? 'Google' : hostOf(c.url));
+    tab.icon = direct ? 'https://www.google.com/favicon.ico' : '';
+    f.src = direct ? directUrl(c.url) : proxyOn ? proxify(c.url) : c.url;
+    if (!f.isConnected) tab.view.replaceChildren(f);
+    applyZoom(tab);
+    // 没有桥接脚本的页面不会回报地址，这里自己记历史 / Pages without the bridge never report back, so record history here
+    if (!proxyOn || direct) addHistory(c.url);
+  }
+  paint(w);
+}
+
+function applyZoom(tab) {
+  const f = tab.frame;
+  if (!f) return;
+  const z = tab.zoom;
+  f.style.width = f.style.height = 100 / z + '%';
+  f.style.transform = z === 1 ? '' : `scale(${z})`;
+}
+
+// ============================================================ 来自网页的消息 / Messages from pages (bridge)
+// 按 iframe 找回它所属的标签页和窗口 / Find the owning tab and window from the iframe
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || typeof d.__cx !== 'string' || !isProxyOrigin(e.origin)) return;
+  let tab = null, w = null;
+  for (const x of windows) {
+    tab = x.tabs.find((tt) => tt.frame && tt.frame.contentWindow === e.source);
+    if (tab) { w = x; break; }
+  }
+  if (!tab) return;
+  const c = cur(tab);
+  switch (d.__cx) {
+    case 'hello': {
+      if (!isWeb(d.url)) return;
+      if (tab.expect) { tab.expect = false; c.url = d.url; }
+      else if (c.url !== d.url) {
+        tab.entries.splice(tab.idx + 1);
+        tab.entries.push({ url: d.url, title: '' });
+        tab.idx = tab.entries.length - 1;
+      }
+      tab.loading = true;
+      tab.waiting = false;
+      tab.title = hostOf(d.url);
+      tab.icon = '';
+      tab.hover = '';
+      if (w.active === tab) w.omniDirty = false;
+      addHistory(d.url);
+      break;
+    }
+    case 'meta': {
+      if (d.url !== c.url) return;
+      tab.title = String(d.title || '').trim().slice(0, 200) || hostOf(c.url);
+      tab.icon = safeIcon(d.icon);
+      c.title = tab.title;
+      updateHistoryMeta(c.url, tab.title, tab.icon);
+      break;
+    }
+    case 'spa': {
+      if (!isWeb(d.url) || d.url === c.url) return;
+      if (d.replace) c.url = d.url;
+      else {
+        tab.entries.splice(tab.idx + 1);
+        tab.entries.push({ url: d.url, title: tab.title });
+        tab.idx = tab.entries.length - 1;
+      }
+      addHistory(d.url);
+      break;
+    }
+    case 'hover':
+      tab.hover = typeof d.url === 'string' ? d.url.slice(0, 400) : '';
+      break;
+    case 'open':
+      if (isWeb(d.url)) newTabIn(w, d.url, { opener: tab });
+      return;
+    case 'leaving':
+      tab.loading = true;
+      tab.waiting = true;
+      clearTimeout(tab.watch);
+      tab.watch = setTimeout(() => { tab.loading = false; paint(windowOfTab(tab)); }, 12000);
+      break;
+    case 'focus':
+      if (focusedWindow !== w) focusWindow(w);
+      closePopups();
+      return;
+    default:
+      return;
+  }
+  paint(w);
+});
+
+// ============================================================ 绘制 / Rendering
+function paintTab(tab, w) {
+  const tabEl = tab.el;
+  tabEl.classList.toggle('active', tab === w.active);
+  tabEl.setAttribute('aria-selected', tab === w.active);
+  tabEl.title = tab.title;
+  tabEl.querySelector('.ttl').textContent = tab.title;
+  const slot = tabEl.querySelector('.slot');
+  const key = tab.loading ? 'loading' : 'icon:' + tab.icon;
+  if (slot.dataset.k !== key) {
+    slot.dataset.k = key;
+    slot.replaceChildren(tab.loading ? el('span', { className: 'throb' }) : favNode(tab.icon));
+  }
+  if (tab.loading) slot.firstChild.classList.toggle('wait', tab.waiting);
+  tab.view.classList.toggle('on', tab === w.active);
+}
+
+function paint(w) {
+  if (!w) return;
+  w.tabs.forEach((tab) => paintTab(tab, w));
+  w.q.strip.classList.toggle('crowded', w.tabs.length > 0 && w.q.strip.clientWidth / w.tabs.length < 96);
+  const tab = w.active;
+  if (!tab) return;
+  const c = cur(tab);
+  const internal = isInternal(c.url);
+  w.q.back.disabled = tab.idx <= 0;
+  w.q.fwd.disabled = tab.idx >= tab.entries.length - 1;
+  if (!w.omniDirty) w.q.url.value = c.url === NTP ? '' : c.url;
+  // https 显示锁；黄底只由 focus/blur 控制，这里只维护 secure
+  // https shows the lock; the yellow background is driven by focus/blur only, so only `secure` is kept here
+  w.q.field.classList.toggle('secure', c.url.startsWith('https://'));
+  const star = w.q.star;
+  star.disabled = internal;
+  star.classList.toggle('on', !!findBookmark(c.url));
+  star.title = findBookmark(c.url) ? t('nav.editBm') : t('nav.addBm');
+  const stoppable = tab.loading && !w.omniDirty;
+  w.q.gobtn.classList.toggle('loading', stoppable);
+  w.q.gobtn.title = stoppable ? t('nav.stop') : t('nav.go');
+  w.q.wMax.title = w.root.classList.contains('max') ? t('win.restore') : t('win.max');
+  w.q.bookbar.classList.toggle('off', !(state.settings.bookbar || c.url === NTP));
+  const full = (tab.title || t('win.newtab')) + ' - Google Chrome';
+  w.taskBtn.querySelector('span').textContent = full;
+  if (w === focusedWindow) document.title = full;
+  const status = tab.hover || (tab.loading && !internal ? t('search.loading', hostOf(c.url)) : '')
+    || (tab.direct && Date.now() < (tab.hintUntil || 0) ? t('google.hint') : '');
+  if (status) w.q.status.textContent = status;
+  w.q.status.classList.toggle('show', !!status);
+}
+
+// ============================================================ 内置页面 / Built-in pages
+function openLink(e, url, tab) {
+  if (e) e.preventDefault();
+  const w = windowOfTab(tab) || focusedWindow;
+  if (e && (e.ctrlKey || e.metaKey || e.button === 1)) newTabIn(w, url, { opener: tab, background: true });
+  else go(tab, url);
+}
+function linkProps(url, tab) {
+  return { href: url, onclick: (e) => openLink(e, url, tab), onauxclick: (e) => { if (e.button === 1) openLink(e, url, tab); } };
+}
+
+function renderInternal(tab) {
+  const url = cur(tab).url;
+  const page = url.startsWith(HIST) ? historyPage(tab) : newTabPage(tab);
+  tab.title = cur(tab).title = url.startsWith(HIST) ? t('hist.title') : t('win.newtab');
+  tab.view.replaceChildren(page);
+}
+
+function thumb(site) {
+  const host = hostOf(site.url).replace(/^www\./, '');
+  let hue = 0;
+  for (const ch of host) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
+  const thumbEl = el('span', { className: 'thumb' },
+    el('span', { className: 'shot' },
+      el('span', { className: 'sb', textContent: host }),
+      el('span', { className: 'bd' },
+        el('b', { textContent: (siteName(site) || host).trim().charAt(0).toUpperCase() }),
+        el('span', { className: 'ln' }, el('i'), el('i'), el('i'), el('i')))));
+  thumbEl.style.setProperty('--h', hue);
+  return thumbEl;
+}
+
+function newTabPage(tab) {
+  const engine = ENGINES[state.settings.engine];
+  const row = (item) => el('a', Object.assign({ className: 'row', title: item.url }, linkProps(item.url, tab)),
+    favNode(item.icon || iconFor(item.url)), el('span', { className: 'l', textContent: item.title || hostOf(item.url) }));
+  const list = (items, empty) => (items.length ? items.map(row) : el('div', { className: 'none', textContent: empty }));
+  const q = el('input', { type: 'search', placeholder: t('ntp.searchIn', engineName(state.settings.engine)) });
+  q.setAttribute('aria-label', t('ntp.search'));
+
+  return el('div', { className: 'page ntp' },
+    el('div', { className: 'wrap' },
+      el('div', { className: 'main' },
+        el('h2', { textContent: t('ntp.most') }),
+        el('div', { className: 'tiles' }, mostVisited().map((s, i) => {
+          const tile = el('a', Object.assign({ className: 'tile', title: s.url }, linkProps(s.url, tab)),
+            thumb(s),
+            el('span', { className: 'lbl' }, favNode(s.icon || iconFor(s.url)),
+              el('span', { className: 'l', textContent: siteName(s) })));
+          tile.style.setProperty('--i', i);
+          return tile;
+        })),
+        el('div', { className: 'more' }, el('a', Object.assign({ textContent: t('ntp.fullHistory') }, linkProps(HIST, tab))))),
+      el('div', { className: 'side' },
+        el('section', null, el('h3', { textContent: t('ntp.search') }),
+          el('div', { className: 'bd' }, el('form', {
+            onsubmit: (e) => { e.preventDefault(); if (q.value.trim()) go(tab, engine.url + encodeURIComponent(q.value.trim())); },
+          }, q, el('button', { className: 'xp-btn', type: 'submit', textContent: t('ntp.search'), style: 'min-width:0' })))),
+        el('section', null, el('h3', { textContent: t('ntp.recentBm') }),
+          el('div', { className: 'bd' }, list(state.bookmarks.slice(-8).reverse(), t('ntp.recentBmEmpty')))),
+        el('section', null, el('h3', { textContent: t('ntp.recentClosed') }),
+          el('div', { className: 'bd' }, list(state.closed.slice(0, 8), t('ntp.recentClosedEmpty')))))));
+}
+
+function historyPage(tab) {
+  const listEl = el('div');
+  const q = el('input', { type: 'search', placeholder: t('hist.search'), oninput: () => fill(q.value) });
+  q.setAttribute('aria-label', t('hist.search'));
+  const locale = lang.current === 'zh' ? 'zh-CN' : 'en-US';
+  const dayLabel = (ts) => new Date(ts).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  function fill(query) {
+    const ql = query.trim().toLowerCase();
+    const items = state.history.filter((h) => !ql || h.url.toLowerCase().includes(ql) || (h.title || '').toLowerCase().includes(ql)).reverse();
+    const out = [];
+    let last = '';
+    for (const h of items.slice(0, 300)) {
+      const day = dayLabel(h.t);
+      if (day !== last) { last = day; out.push(el('h4', { textContent: day })); }
+      out.push(el('div', { className: 'row' },
+        el('span', { className: 'time', textContent: new Date(h.t).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false }) }),
+        favNode(h.icon || iconFor(h.url)),
+        el('a', Object.assign({ textContent: h.title || h.url, title: h.url }, linkProps(h.url, tab))),
+        el('span', { className: 'dom', textContent: hostOf(h.url) })));
+    }
+    if (!out.length) out.push(el('div', { className: 'none', textContent: ql ? t('hist.none') : t('hist.empty') }));
+    listEl.replaceChildren(...out);
+  }
+  fill('');
+  return el('div', { className: 'page hist' }, el('div', { className: 'wrap' },
+    el('h1', { textContent: t('hist.title') }),
+    el('div', { className: 'bar' }, q, el('a', { textContent: t('hist.clear'), onclick: clearDataDialog })),
+    listEl));
+}
+
+// ============================================================ 弹出层 / Popups: menus, bubbles, dialogs
+let menuEl = null;
+let bubbleEl = null;
+
+function closePopups() {
+  if (menuEl) { animateOut(menuEl); menuEl = null; }
+  if (bubbleEl) { animateOut(bubbleEl); bubbleEl = null; }
+  document.querySelectorAll('.open').forEach((b) => b.classList.remove('open'));
+  for (const w of windows) hideSuggest(w);
+}
+
+function place(node, anchor, alignRight) {
+  const r = anchor instanceof Element ? anchor.getBoundingClientRect()
+    : { left: anchor.x, right: anchor.x, top: anchor.y, bottom: anchor.y };
+  let x = alignRight ? r.right - node.offsetWidth : r.left;
+  let y = r.bottom + 1;
+  if (y + node.offsetHeight > innerHeight - 2) y = Math.max(2, r.top - node.offsetHeight - 1);
+  x = Math.max(2, Math.min(x, innerWidth - node.offsetWidth - 2));
+  node.style.left = x + 'px';
+  node.style.top = y + 'px';
+}
+
+function menuSvg(id) {
+  const s = svgIcon(id);
+  s.setAttribute('class', 'msvg');
+  return s;
+}
+
+function showMenu(w, anchor, items, { alignRight = false } = {}) {
+  closePopups();
+  const m = el('div', { className: 'menu' });
+  m.setAttribute('role', 'menu');
+  for (const it of items) {
+    if (it === '-') { m.append(el('div', { className: 'sep' })); continue; }
+    const row = el('div', { className: 'mi' + (it.disabled ? ' dis' : '') + (it.checked ? ' chk' : ''),
+      onclick: () => { if (it.disabled) return; closePopups(); it.action(); } },
+      // svg：用图标库里的图标（如 Chrome 标志）；icon：网站图标地址 / svg: a sprite icon (e.g. the Chrome logo); icon: a favicon URL
+      it.svg ? menuSvg(it.svg) : it.icon !== undefined ? favNode(it.icon) : null,
+      el('span', { className: 'l', textContent: it.label }));
+    row.setAttribute('role', 'menuitem');
+    m.append(row);
+  }
+  document.body.append(m);
+  place(m, anchor, alignRight);
+  menuEl = m;
+  if (anchor instanceof Element) anchor.classList.add('open');
+}
+
+function showDialog(title, body, buttons) {
+  closePopups();
+  const ov = el('div', { className: 'overlay' });
+  const close = () => animateOut(ov, 120);
+  ov.append(el('div', { className: 'xp-dlg' },
+    el('div', { className: 'xp-title' }, el('span', { textContent: title }),
+      el('button', { className: 'xp-x', title: t('win.close'), textContent: '×', onclick: close })),
+    el('div', { className: 'xp-body' }, body),
+    el('div', { className: 'xp-btns' }, buttons.map((b) =>
+      el('button', { className: 'xp-btn', textContent: b.label, onclick: () => { if (!b.action || b.action() !== false) close(); } })))));
+  ov.firstChild.setAttribute('role', 'dialog');
+  ov.firstChild.setAttribute('aria-label', title);
+  ov.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  document.body.append(ov);
+  // 默认焦点放在底部按钮上，不能落到正文里的按钮（比如“清除本地历史记录”）
+  // Default focus goes to the footer buttons, never to a button inside the body (e.g. "Clear local history")
+  ov.querySelector('.xp-btns .xp-btn').focus();
+}
+
+function aboutDialog() {
+  const logo = svgIcon('i-chrome');
+  showDialog(t('win.about'), el('div', { className: 'about' }, logo, el('div', null,
+    el('p', null, el('b', { textContent: 'Google Chrome' }), el('br'), t('about.version')),
+    el('p', { textContent: proxyOn ? t('about.proxyOn') : t('about.proxyOff') }),
+    el('p', null, el('small', { textContent: t('about.note') })))),
+  [{ label: t('dlg.ok') }]);
+}
+
+// 清除本地历史记录（浏览历史 + 最近关闭的标签页），书签和设置不动
+// Clear local history (browsing history + recently closed tabs); bookmarks and settings are kept
+function clearLocalHistory() {
+  state.history = [];
+  state.closed = [];
+  clearTimeout(saveTimers.history);
+  store.set('history', []);   // 立即写盘，不走防抖 / write now instead of debouncing
+  for (const w of windows) {
+    if (w.active && isInternal(cur(w.active).url)) renderInternal(w.active);
+    paint(w);
+  }
+}
+
+// 选项：搜索引擎、书签栏、界面语言、清除本地历史记录
+// Options: search engine, bookmarks bar, UI language, clear local history
+function optionsDialog() {
+  const sel = el('select', null, Object.entries(ENGINES).map(([k, v]) =>
+    el('option', { value: k, textContent: engineName(k) + (engineNote(k) ? ` (${engineNote(k)})` : ''), selected: k === state.settings.engine })));
+  const bar = el('input', { type: 'checkbox', checked: state.settings.bookbar });
+  const langSel = el('select', null, [
+    el('option', { value: 'zh', textContent: '中文 (Chinese)', selected: lang.current === 'zh' }),
+    el('option', { value: 'en', textContent: 'English', selected: lang.current === 'en' }),
+  ]);
+
+  // 两步确认：第一次点击只显示条数，再点一次才真正清除
+  // Two-step confirm: the first click shows the count, the second click actually clears
+  const clearBtn = el('button', { className: 'xp-btn', type: 'button' });
+  const clearNote = el('small');
+  let armed = false;
+  const resetClear = () => {
+    armed = false;
+    clearBtn.textContent = t('dlg.clearLocal');
+    clearBtn.disabled = !state.history.length && !state.closed.length;
+    clearNote.textContent = clearBtn.disabled ? t('dlg.clearLocalEmpty') : t('dlg.clearLocalCount', state.history.length);
+  };
+  clearBtn.addEventListener('click', () => {
+    if (!armed) {
+      armed = true;
+      clearBtn.textContent = t('dlg.clearLocalConfirm');
+      clearNote.textContent = t('dlg.clearLocalWarn', state.history.length);
+      return;
+    }
+    clearLocalHistory();
+    resetClear();
+    clearNote.textContent = t('dlg.clearLocalDone');
+  });
+  resetClear();
+
+  showDialog(t('win.options'), el('div', null,
+    el('label', null, t('dlg.engine'), sel),
+    el('label', null, bar, t('dlg.alwaysBar')),
+    el('label', null, t('dlg.lang'), langSel),
+    el('p', null, el('small', { textContent: t('dlg.langNote') })),
+    el('fieldset', { className: 'xp-group' }, el('legend', { textContent: t('dlg.historyGroup') }),
+      el('div', { className: 'xp-row' }, clearBtn, clearNote))),
+  [{ label: t('dlg.ok'), action: () => {
+    const barChanged = state.settings.bookbar !== bar.checked;
+    state.settings.engine = sel.value;
+    state.settings.bookbar = bar.checked;
+    clearTimeout(saveTimers.settings);
+    store.set('settings', state.settings);
+    // 切换语言会刷新整个界面（所有打开的标签页都会关掉）
+    // Switching language reloads the whole UI (all open tabs are closed)
+    if (langSel.value !== lang.current) { lang.set(langSel.value); return false; }
+    for (const w of windows) {
+      if (barChanged) slideBookbar(w);
+      if (w.active && isInternal(cur(w.active).url)) renderInternal(w.active);
+      paint(w);
+    }
+  } }, { label: t('dlg.cancel') }]);
+}
+
+function clearDataDialog(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const h = el('input', { type: 'checkbox', checked: true });
+  const b = el('input', { type: 'checkbox', checked: false });
+  showDialog(t('dlg.clear'), el('div', null,
+    el('p', { textContent: t('dlg.clearIntro') }),
+    el('label', null, h, t('dlg.clearHist')),
+    el('label', null, b, t('dlg.clearBm'))),
+  [{ label: t('dlg.clear'), action: () => {
+    if (h.checked) { state.history = []; state.closed = []; save('history'); }
+    if (b.checked) { state.bookmarks = []; save('bookmarks'); }
+    for (const w of windows) {
+      renderBookbar(w);
+      if (w.active && isInternal(cur(w.active).url)) renderInternal(w.active);
+    }
+    paint(focusedWindow);
+  } }, { label: t('dlg.cancel') }]);
+}
+
+// ============================================================ 书签 / Bookmarks
+function slideBookbar(w) {
+  w.q.bookbar.classList.add('slide');
+  setTimeout(() => w.q.bookbar.classList.remove('slide'), 260);
+}
+
+function renderBookbar(w, added) {
+  const bar = w.q.bookItems;
+  if (!state.bookmarks.length) {
+    bar.replaceChildren(el('span', { className: 'empty', textContent: t('bm.emptyBar') }));
+    return;
+  }
+  bar.replaceChildren(...state.bookmarks.map((b) => el('button', {
+    className: 'bm' + (b === added ? ' new' : ''), title: b.title + '\n' + b.url,
+    onclick: (e) => openLink(e, b.url, w.active),
+    onauxclick: (e) => { if (e.button === 1) openLink(e, b.url, w.active); },
+    oncontextmenu: (e) => {
+      e.preventDefault();
+      showMenu(w, { x: e.clientX, y: e.clientY }, [
+        { label: t('bm.open'), action: () => go(w.active, b.url) },
+        { label: t('bm.openNew'), action: () => newTabIn(w, b.url) },
+        { label: t('bm.openNewWin'), action: () => createWindow(b.url) },
+        '-',
+        { label: t('bm.delete'), action: () => removeBookmark(b) },
+      ]);
+    },
+  }, favNode(b.icon || iconFor(b.url)), el('span', { className: 'l', textContent: b.title }))));
+}
+
+function removeBookmark(b) {
+  state.bookmarks = state.bookmarks.filter((x) => x !== b);
+  save('bookmarks');
+  for (const w of windows) renderBookbar(w);
+  paint(focusedWindow);
+}
+
+function starClicked(w) {
+  const tab = w.active;
+  if (!tab || isInternal(cur(tab).url)) return;
+  let b = findBookmark(cur(tab).url);
+  const added = !b;
+  if (!b) {
+    b = { url: cur(tab).url, title: tab.title || hostOf(cur(tab).url), icon: tab.icon };
+    state.bookmarks.push(b);
+    save('bookmarks');
+    for (const x of windows) renderBookbar(x, x === w ? b : undefined);
+    paint(w);
+    anim(w.q.star.querySelector('.ic'), [{ transform: 'scale(1)' }, { transform: 'scale(1.5) rotate(-14deg)' }, { transform: 'scale(1)' }],
+      { duration: 360, easing: 'ease-out' });
+  }
+  closePopups();
+  const name = el('input', { type: 'text', value: b.title });
+  const commit = () => { b.title = name.value.trim() || hostOf(b.url); save('bookmarks'); for (const x of windows) renderBookbar(x); closePopups(); };
+  name.addEventListener('keydown', (e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') closePopups(); });
+  bubbleEl = el('div', { className: 'bubble' },
+    el('h4', { textContent: added ? t('bm.added') : t('bm.edit') }),
+    el('label', null, t('bm.name'), name),
+    el('div', { className: 'btns' },
+      el('button', { className: 'xp-btn', textContent: t('bm.delete'), onclick: () => { closePopups(); removeBookmark(b); } }),
+      el('button', { className: 'xp-btn', textContent: t('win.close'), onclick: commit })));
+  document.body.append(bubbleEl);
+  place(bubbleEl, w.q.star, false);
+  name.select();
+}
+
+// ============================================================ 地址栏建议 / Address bar suggestions
+function hideSuggest(w) { w.q.suggest.hidden = true; w.sugItems = []; w.sugSel = -1; }
+
+function showSuggest(w) {
+  const q = w.q.url.value.trim();
+  if (!q) return hideSuggest(w);
+  const ql = q.toLowerCase();
+  const first = resolveInput(q);
+  const list = [looksLikeUrl(q) ? { url: first, kind: 'url' } : { url: first, kind: 'search', text: q }];
+  const seen = new Set([first]);
+  const pool = state.bookmarks.concat(state.history.slice().reverse());
+  for (const h of pool) {
+    if (list.length >= 6) break;
+    if (seen.has(h.url)) continue;
+    if (h.url.toLowerCase().includes(ql) || (h.title || '').toLowerCase().includes(ql)) {
+      seen.add(h.url);
+      list.push({ url: h.url, kind: 'url', title: h.title, icon: h.icon });
+    }
+  }
+  w.sugItems = list;
+  w.sugSel = -1;
+  w.q.suggest.replaceChildren(...list.map((it, i) => el('div', {
+    className: 'sg',
+    // 用 mousedown 而不是 click：输入框失焦会先收起列表 / mousedown, not click: blur would hide the list first
+    onmousedown: (e) => { e.preventDefault(); submitOmni(w, it.url); },
+    onmousemove: () => selectSuggest(w, i, false),
+  }, it.kind === 'search'
+    ? [el('span', { className: 'q', textContent: it.text }), el('span', { className: 't', textContent: t('sg.search', engineName(state.settings.engine)) })]
+    : [favNode(it.icon || ''), el('span', { className: 'u', textContent: it.url }), it.title ? el('span', { className: 't', textContent: '- ' + it.title }) : null])));
+  w.q.suggest.hidden = false;
+}
+
+function selectSuggest(w, i, fillInput) {
+  w.sugSel = i;
+  [...w.q.suggest.children].forEach((n, k) => n.classList.toggle('sel', k === i));
+  if (fillInput && w.sugItems[i]) w.q.url.value = w.sugItems[i].kind === 'search' ? w.sugItems[i].text : w.sugItems[i].url;
+}
+
+function submitOmni(w, target) {
+  const url = target || resolveInput(w.q.url.value);
+  if (!url || !w.active) return;
+  w.omniDirty = false;
+  hideSuggest(w);
+  w.q.url.blur();
+  go(w.active, url);
+}
+
+// ============================================================ 证书（锁图标）/ Certificate (lock icon)
+// 点锁：旧 Chrome 风格的连接信息气泡；点“证书信息”打开 XP 证书查看器（常规/详细两个选项卡）。
+// 证书数据来自本地代理的 /?cert= 端点（真实 TLS 握手）。
+// Clicking the lock opens an old-Chrome connection bubble; "Certificate information" opens an XP
+// certificate viewer (General / Details). Data comes from the proxy's /?cert= endpoint (a real TLS handshake).
+const certCache = new Map();
+
+function fetchCert(host) {
+  if (certCache.has(host)) return certCache.get(host);
+  const p = (async () => {
+    // 带上界面令牌；放在查询串里，请求仍是简单请求，不会触发跨域预检
+    // Carry the UI token; in the query string so the request stays simple and needs no preflight
+    const r = await fetch(`http://chrome.localhost${PORT}/?cert=${encodeURIComponent(host)}&t=${encodeURIComponent(UI_TOKEN)}`, { cache: 'no-store' });
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'http ' + r.status);
+    return d;
+  })();
+  p.catch(() => certCache.delete(host));
+  certCache.set(host, p);
+  return p;
+}
+
+function lockClicked(w) {
+  const tab = w.active;
+  if (!tab) return;
+  const c = cur(tab);
+  if (!c.url.startsWith('https://')) return;
+  const host = hostOf(c.url);
+  closePopups();
+  const body = el('div', null,
+    el('div', { className: 'cert-head' }, svgIcon('i-cert'),
+      el('div', null,
+        el('div', { className: 'cert-host', textContent: host }),
+        el('div', null, t('cert.identity'), ' ', el('b', null), '.'),
+        el('div', { className: 'cert-loading', textContent: t('cert.loading') }))),
+    el('button', { className: 'cert-link', textContent: t('cert.viewInfo'), onclick: () => certDialog(host) }));
+  bubbleEl = el('div', { className: 'bubble' }, el('h4', { textContent: t('cert.connTitle') }), body);
+  document.body.append(bubbleEl);
+  place(bubbleEl, w.q.lock, false);
+  // 异步补全颁发者信息 / Fill in the issuer asynchronously
+  fetchCert(host).then((cert) => {
+    const b = body.querySelector('b');
+    if (b && bubbleEl) b.textContent = cert.issuer || host;
+    const l = body.querySelector('.cert-loading');
+    // echo = 目标是本机代理自己（明文 http），没有证书可看，就别再给「证书信息」的入口
+    // echo = the target is the local proxy itself (plain http): there is no certificate to show,
+    // so the link to the certificate window is dropped
+    if (cert.echo && bubbleEl) {
+      if (l) l.textContent = t('cert.localProxy');
+      const link = body.querySelector('.cert-link');
+      if (link) link.remove();
+    } else if (l) {
+      l.textContent = cert.issuer ? '' : t('cert.none');
+    }
+  }).catch((err) => {
+    const l = body.querySelector('.cert-loading');
+    if (l) l.textContent = t('cert.err', err.message || err);
+  });
+}
+
+// XP 证书查看器：常规 / 详细信息两个选项卡 · XP certificate viewer: General / Details tabs
+function certDialog(host) {
+  closePopups();
+  const generalPane = el('div', null, el('div', { className: 'cert-loading', textContent: t('cert.loading') }));
+  const detailPane = el('div', { hidden: true });
+  const tabs = el('div', { className: 'cert-tabs' });
+  const tabG = el('button', { className: 'cert-tab on', textContent: t('cert.tab.general') });
+  const tabD = el('button', { className: 'cert-tab', textContent: t('cert.tab.detail') });
+  tabG.addEventListener('click', () => { tabG.classList.add('on'); tabD.classList.remove('on'); generalPane.hidden = false; detailPane.hidden = true; });
+  tabD.addEventListener('click', () => { tabD.classList.add('on'); tabG.classList.remove('on'); generalPane.hidden = true; detailPane.hidden = false; });
+  tabs.append(tabG, tabD);
+
+  const wrap = el('div', null, tabs, generalPane, detailPane,
+    el('p', { className: 'cert-note', textContent: 'SHA256 · ' + host }));
+
+  fetchCert(host).then((cert) => {
+    // 常规页 / General tab
+    generalPane.replaceChildren(
+      el('div', { className: 'cert-head' }, svgIcon('i-cert'),
+        el('div', null,
+          el('div', null, el('b', { className: 'cert-identity', textContent: cert.subject || host })),
+          el('div', null, t('cert.certBy'), ' ', el('b', null, cert.issuer || t('cert.none')), '.'))),
+      el('div', { style: 'margin-top:10px' },
+        el('div', { className: 'cert-line' }, el('span', { className: 'k', textContent: t('cert.issuedTo') }),
+          el('span', { className: 'v', textContent: cert.subject || host })),
+        el('div', { className: 'cert-line' }, el('span', { className: 'k', textContent: t('cert.issuedBy') }),
+          el('span', { className: 'v', textContent: cert.issuer || t('cert.none') })),
+        el('div', { className: 'cert-line' }, el('span', { className: 'k', textContent: t('cert.validity') }),
+          el('span', { className: 'v', textContent: `${cert.validFrom} — ${cert.validTo}` }))));
+    // 详细页 / Details tab
+    const rows = [
+      [t('cert.subject'), cert.subject || t('cert.none')],
+      [t('cert.issuer'), cert.issuer || t('cert.none')],
+      [t('cert.serial'), cert.serialNumber || t('cert.none')],
+      [t('cert.san'), (cert.subjectAltName || []).join(', ') || t('cert.none')],
+      [t('cert.from'), cert.validFrom || t('cert.none')],
+      [t('cert.to'), cert.validTo || t('cert.none')],
+      [t('cert.proto'), cert.protocol || t('cert.none')],
+      [t('cert.cipher'), (cert.cipher || t('cert.none')) + (cert.bits ? ` (${cert.bits} bits)` : '')],
+      [t('cert.fingerprint'), cert.fingerprint || t('cert.none')],
+    ];
+    detailPane.replaceChildren(el('div', { className: 'cert-fields' },
+      rows.map(([k, v]) => el('div', { className: 'row' }, el('div', { className: 'k', textContent: k }), el('div', { className: 'v', textContent: v })))));
+  }).catch((err) => {
+    generalPane.replaceChildren(el('div', { className: 'cert-loading', textContent: t('cert.err', err.message || err) }));
+  });
+
+  showDialog(t('cert.title'), wrap, [{ label: t('dlg.ok') }]);
+}
+
+// ============================================================ 全局事件 / Global events
+document.addEventListener('mousedown', (e) => {
+  if (!e.target.closest('.menu, .bubble, .open, .omni')) closePopups();
+});
+window.addEventListener('blur', () => { if (document.activeElement && document.activeElement.tagName === 'IFRAME') closePopups(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopups(); });
+window.addEventListener('resize', () => { closePopups(); for (const w of windows) { applyGeom(w); paint(w); } });
+
+// 桌面图标 / 开始菜单 · Desktop icon / Start menu
+document.getElementById('deskIcon').addEventListener('dblclick', () => { if (windows.length) focusWindow(windows[windows.length - 1]); else createWindow(NTP); });
+document.getElementById('deskIcon').addEventListener('keydown', (e) => { if (e.key === 'Enter') { if (windows.length) focusWindow(windows[windows.length - 1]); else createWindow(NTP); } });
+document.getElementById('start').addEventListener('click', (e) => showMenu(null, e.currentTarget, [
+  // "Google Chrome" 本身就是新开一个窗口，不再单列"新建窗口" / "Google Chrome" already opens a new window, so no separate "New Window"
+  { label: 'Google Chrome', svg: 'i-chrome', action: () => createWindow(NTP) },
+  { label: t('menu.startAbout'), action: aboutDialog },
+]));
+document.querySelector('#start .start-label').textContent = t('menu.startLabel');
+
+// 时钟 / Clock
+function tick() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString(lang.current === 'zh' ? 'zh-CN' : 'en-US',
+    { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+tick();
+setInterval(tick, 10000);
+
+// ============================================================ 每窗口静态文案 / Static per-window strings
+function applyI18nWindow(w) {
+  const { q } = w;
+  q.newtabBtn.title = t('tab.newTip');
+  q.newtabBtn.setAttribute('aria-label', t('tab.newTip'));
+  q.wMin.title = t('win.min');
+  q.wMin.setAttribute('aria-label', t('win.min'));
+  q.wMax.title = w.root.classList.contains('max') ? t('win.restore') : t('win.max');
+  q.wClose.title = t('win.close');
+  q.wClose.setAttribute('aria-label', t('win.close'));
+  q.back.title = t('nav.back');
+  q.fwd.title = t('nav.fwd');
+  q.reload.title = t('nav.reload');
+  q.star.title = t('nav.addBm');
+  q.gobtn.title = t('nav.go');
+  q.url.setAttribute('aria-label', t('nav.addr'));
+  q.lock.setAttribute('aria-label', t('nav.secure'));
+  q.lock.title = t('nav.secure');
+  q.pageMenu.title = t('nav.pageMenu');
+  q.wrenchMenu.title = t('nav.mainMenu');
+  const ob = q.otherBm.querySelector('.l');
+  if (ob) ob.textContent = t('bm.other');
+  renderBookbar(w);
+}
+
+// 页面级（不属于某个窗口）的文案 / Page-level strings, outside any single window
+function applyI18nPage() {
+  document.documentElement.lang = lang.current === 'zh' ? 'zh-CN' : 'en';
+  const desk = document.getElementById('deskIcon');
+  desk.title = t('desk.open');
+  desk.setAttribute('aria-label', t('desk.open'));
+  const info = winTpl.content.querySelector('.infobar button');
+  if (info) { info.title = t('win.close'); info.setAttribute('aria-label', t('info.closeTip')); }
+}
+
+// ============================================================ 启动 / Startup
+// 代理探测：拿到界面页里的令牌，再用它回问一次，确认代理真的在服务我们这份界面。
+// 拿不到（例如页面是从别的程序、甚至是 file:// 打开的旧副本）就不再往代理上挂。
+// Proxy probe: take the token baked into this UI page, then echo it back once to confirm the proxy
+// is really serving this UI. Without it (e.g. a page opened from somewhere else, or a stale file://
+// copy) we do not route through the proxy.
+async function detectProxy() {
+  if (!/^https?:$/.test(location.protocol)) return false;
+  if (!UI_TOKEN) return false;
+  try {
+    const r = await fetch(`http://ping.https.chrome.localhost${PORT}/__ping?t=${encodeURIComponent(UI_TOKEN)}`, { cache: 'no-store' });
+    return r.ok && (await r.text()) === 'cx-ok';
+  } catch { return false; }
+}
+
+(async function init() {
+  UI_TOKEN = document.documentElement.dataset.cxToken || '';
+  proxyOn = await detectProxy();
+  if (proxyOn && location.hostname !== 'chrome.localhost') {
+    location.replace(`http://chrome.localhost${PORT}/`);
+    return;
+  }
+  lang.syncToProxy();
+  applyI18nPage();
+  // 第一个窗口 / First window
+  const w = createWindow(NTP);
+  if (!proxyOn) {
+    w.q.infobar.querySelector('.msg').append(t('info.offline'),
+      el('code', { textContent: 'node server.js' }), t('info.offline2'), el('code', { textContent: 'http://localhost:8787/' }), '.');
+    w.q.infobar.hidden = false;
+  }
+  anim(w.root, [{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 200 });
+})();
+</script>
+</body>
+</html>
